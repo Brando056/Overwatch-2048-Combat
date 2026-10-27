@@ -1,0 +1,10 @@
+# Watchpoint Matrix 2048 - Python Dependencies
+
+# Core game dependencies
+pygame>=2.0.0
+
+# Note: tkinter is included in most Python distributions
+# If tkinter is missing, install it via your system package manager:
+#   - macOS: included with Python from python.org
+#   - Ubuntu/Debian: sudo apt-get install python3-tk
+#   - Fedora: sudo dnf install python3-tkinter

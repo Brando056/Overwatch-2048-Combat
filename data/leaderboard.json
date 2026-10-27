@@ -1,0 +1,20 @@
+[
+  {
+    "name": "brando",
+    "mode": "battle",
+    "difficulty": "easy",
+    "score": 616,
+    "turns": 69,
+    "result": "win",
+    "date": "2026-10-28"
+  },
+  {
+    "name": "brando",
+    "mode": "battle",
+    "difficulty": "easy",
+    "score": 452,
+    "turns": 68,
+    "result": "win",
+    "date": "2026-10-28"
+  }
+]

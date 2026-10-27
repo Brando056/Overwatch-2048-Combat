@@ -1,0 +1,156 @@
+[
+  {
+    "id": "q001",
+    "type": "choice",
+    "question": "Which keyword defines a function in Python?",
+    "options": ["A. func", "B. def", "C. function", "D. make"],
+    "answer": "B",
+    "explanation": "Python uses the def keyword to define a function."
+  },
+  {
+    "id": "q002",
+    "type": "choice",
+    "question": "Which data type stores an ordered collection that can be changed?",
+    "options": ["A. tuple", "B. string", "C. list", "D. integer"],
+    "answer": "C",
+    "explanation": "A list is ordered and mutable."
+  },
+  {
+    "id": "q003",
+    "type": "fill",
+    "question": "The first index of a Python list is ____.",
+    "answer": "0",
+    "explanation": "Python uses zero-based indexing."
+  },
+  {
+    "id": "q004",
+    "type": "choice",
+    "question": "Which symbol starts a single-line comment in Python?",
+    "options": ["A. //", "B. <!--", "C. #", "D. --"],
+    "answer": "C",
+    "explanation": "Python comments begin with #."
+  },
+  {
+    "id": "q005",
+    "type": "choice",
+    "question": "What does len([2, 4, 8]) return?",
+    "options": ["A. 2", "B. 3", "C. 4", "D. 8"],
+    "answer": "B",
+    "explanation": "The list contains three items."
+  },
+  {
+    "id": "q006",
+    "type": "fill",
+    "question": "A loop that continues while a condition is true is a ____ loop.",
+    "answer": "while",
+    "explanation": "Python uses while for condition-controlled loops."
+  },
+  {
+    "id": "q007",
+    "type": "choice",
+    "question": "Which method adds one item to the end of a list?",
+    "options": ["A. add", "B. push", "C. append", "D. insert_end"],
+    "answer": "C",
+    "explanation": "list.append(item) adds one item at the end."
+  },
+  {
+    "id": "q008",
+    "type": "choice",
+    "question": "Which operator checks equality?",
+    "options": ["A. =", "B. ==", "C. !=", "D. ==="],
+    "answer": "B",
+    "explanation": "The == operator checks whether two values are equal."
+  },
+  {
+    "id": "q009",
+    "type": "fill",
+    "question": "The Boolean value for a true condition is ____.",
+    "answer": "True",
+    "explanation": "True and False are Python Boolean values."
+  },
+  {
+    "id": "q010",
+    "type": "choice",
+    "question": "Which statement imports a module named random?",
+    "options": ["A. include random", "B. use random", "C. import random", "D. module random"],
+    "answer": "C",
+    "explanation": "Python imports modules with the import statement."
+  },
+  {
+    "id": "q011",
+    "type": "choice",
+    "question": "What does a dictionary store?",
+    "options": ["A. key-value pairs", "B. only numbers", "C. only strings", "D. ordered loops"],
+    "answer": "A",
+    "explanation": "Dictionaries map keys to values."
+  },
+  {
+    "id": "q012",
+    "type": "fill",
+    "question": "The keyword used to return a value from a function is ____.",
+    "answer": "return",
+    "explanation": "return sends a value back to the caller."
+  },
+  {
+    "id": "q013",
+    "type": "choice",
+    "question": "Which type represents whole numbers?",
+    "options": ["A. float", "B. bool", "C. int", "D. str"],
+    "answer": "C",
+    "explanation": "int represents integers."
+  },
+  {
+    "id": "q014",
+    "type": "choice",
+    "question": "What is the result of 3 * 2?",
+    "options": ["A. 5", "B. 6", "C. 8", "D. 32"],
+    "answer": "B",
+    "explanation": "The multiplication result is 6."
+  },
+  {
+    "id": "q015",
+    "type": "fill",
+    "question": "A Python file normally uses the extension ____.",
+    "answer": ".py",
+    "explanation": "Python source files use the .py extension."
+  },
+  {
+    "id": "q016",
+    "type": "choice",
+    "question": "Which block handles an exception?",
+    "options": ["A. if/else", "B. try/except", "C. for/in", "D. with/as"],
+    "answer": "B",
+    "explanation": "try/except handles exceptions."
+  },
+  {
+    "id": "q017",
+    "type": "choice",
+    "question": "Which function displays text in the terminal?",
+    "options": ["A. show", "B. write", "C. print", "D. display"],
+    "answer": "C",
+    "explanation": "print displays values in the terminal."
+  },
+  {
+    "id": "q018",
+    "type": "fill",
+    "question": "The keyword used to create a class is ____.",
+    "answer": "class",
+    "explanation": "Python class definitions start with class."
+  },
+  {
+    "id": "q019",
+    "type": "choice",
+    "question": "Which value means that a variable has no value?",
+    "options": ["A. Empty", "B. Null", "C. None", "D. Blank"],
+    "answer": "C",
+    "explanation": "None represents the absence of a value in Python."
+  },
+  {
+    "id": "q020",
+    "type": "choice",
+    "question": "Which collection stores unique values?",
+    "options": ["A. list", "B. set", "C. tuple", "D. string"],
+    "answer": "B",
+    "explanation": "A set stores unique elements."
+  }
+]
