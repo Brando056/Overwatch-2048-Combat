@@ -1,385 +1,388 @@
-# 守望矩阵 2048 游戏规则
+# 2048: Overwatch VS Talon Game Rules
 
-版本：1.2  
-生效日期：2026 年 10 月 28 日  
-文档状态：实现依据
+Version: 1.2  
+Effective date: October 28, 2026  
+Document status: Implementation reference
 
-## 1 文档用途
+## 1 Purpose of This Document
 
-本文档是“守望矩阵 2048”项目的唯一规则依据。代码、题库、存档和排行榜都必须按照本文档实现。本文档中的数值、输入、状态变化、随机机制和结束条件均为确定规则；实现时不得自行增加或修改行为。
+This document is the sole rules reference for the "2048: Overwatch VS Talon" project. Code, the question bank, save data, and the leaderboard must all be implemented according to this document. The values, inputs, state changes, random mechanics, and end conditions in this document are definitive rules; implementations must not add or modify behavior on their own.
 
-本项目是一个使用 Python 语言开发的 以`5×5棋盘的2048`为基础的战斗游戏，使用图形界面（GUI）而不是终端文本界面运行。玩家通过 `W`、`A`、`S`、`D` 或方向键移动数字方块，按照 2048 规则合并方块，并将合并结果转化为伤害、治疗、生命上限、技能次数和分数。游戏包含战斗模式和残局挑战模式。
+This project is a battle game developed in Python, based on `5×5 board 2048`, and it runs with a graphical user interface (GUI) rather than a terminal text interface. The player moves number tiles with `W`, `A`, `S`, `D` or the arrow keys, merges tiles according to 2048 rules, and converts merge results into damage, healing, maximum health, ability uses, and score. The game includes a Battle Mode and an Endgame Challenge Mode.
 
-主题名称仅用于游戏文本和功能命名。不使用图片素材；英雄技能、敌方技能和惊喜盒子效果触发时播放对应语音/音效，背景音乐按第 17 节规则播放。
+The theme names are used only for in-game text and feature naming. No image assets are used; when hero abilities, enemy abilities, and Surprise Box effects trigger, the corresponding voice line/sound effect is played, and background music is played according to the rules in Section 17.
 
-## 2 固定术语
+## 2 Fixed Terminology
 
-| 术语 | 定义 |
+| Term | Definition |
 |---|---|
-| 棋盘 | 5 行 5 列的方格，共 25 个位置。 |
-| 方块 | 棋盘中的非空数字，初始值只能是 2 或 4，之后始终为 2 的幂。 |
-| 空格 | 没有数字方块且没有阻挡格的位置。 |
-| 阻挡格 | 不能放置、移动或合并方块的位置。 |
-| 有效移动 | 移动后至少有一个方块位置改变，或至少发生一次合并。 |
-| 合并 | 两个数值相同且在同一移动方向上相遇的方块合成为一个两倍数值的方块。 |
-| 回合 | 一次有效移动及其完整结算过程。 |
-| 英雄技能次数 | 三种英雄技能共用的整数资源。 |
-| 连续答对题目数 | 当前连续答对的 Bug 题目数量；答错后归零。 |
-| 连续答错题目数 | 当前连续答错的 Bug 题目数量；答对后归零；达到 5 时触发生命值惩罚并归零。 |
-| 死亡次数 | 玩家当前生命值降至 0 的累计次数，从 0 开始计数。 |
-| 惊喜盒子 | 独立于棋盘数值保存的单个坐标状态，不属于数字方块或阻挡格。 |
+| Board | A grid of 5 rows and 5 columns, 25 positions in total. |
+| Tile | A non-empty number on the board. Its initial value can only be 2 or 4, and it is always a power of 2 afterwards. |
+| Empty cell | A position with no number tile and no blocker cell. |
+| Blocker cell | A position where tiles cannot be placed, moved, or merged. |
+| Valid move | A move after which at least one tile has changed position, or at least one merge has occurred. |
+| Merge | Two tiles of the same value that meet along the movement direction combine into one tile of double the value. |
+| Turn | One valid move and its complete resolution process. |
+| Hero ability uses | An integer resource shared by all three hero abilities. |
+| Consecutive correct answers | The number of Bug questions currently answered correctly in a row; resets to zero after a wrong answer. |
+| Consecutive wrong answers | The number of Bug questions currently answered wrongly in a row; resets to zero after a correct answer; when it reaches 5, a health penalty is triggered and it resets to zero. |
+| Death count | The cumulative number of times the player's current health has dropped to 0, starting from 0. |
+| Surprise Box | A single coordinate state saved independently of the board values; it is neither a number tile nor a blocker cell. |
 
-## 3 游戏数据
+## 3 Game Data
 
-### 3.1 棋盘数据
+### 3.1 Board Data
 
-棋盘使用二维列表保存，空格使用 `0` 表示，阻挡格使用 `-1` 表示。数字方块使用正整数表示。
+The board is stored as a two-dimensional list. Empty cells are represented by `0`, and blocker cells are represented by `-1`. Number tiles are represented by positive integers.
 
-惊喜盒子使用单独的 `mystery_box` 坐标保存。它不阻挡方块移动；当一个方块在有效移动过程中经过或停在该坐标时，立即触发盒子效果并移除盒子，方块仍按正常 2048 规则完成本次移动。每局最多存在 1 个惊喜盒子。
+The Surprise Box is stored in a separate `mystery_box` coordinate. It does not block tile movement; when a tile passes through or stops at that coordinate during a valid move, the box effect triggers immediately and the box is removed, and the tile still completes the move according to normal 2048 rules. At most 1 Surprise Box can exist per game.
 
-棋盘坐标从 `A1` 到 `E5`：
+Board coordinates range from `A1` to `E5`:
 
-| 列 | A | B | C | D | E |
+| Column | A | B | C | D | E |
 |---|---:|---:|---:|---:|---:|
-| 行 1 | A1 | B1 | C1 | D1 | E1 |
-| 行 2 | A2 | B2 | C2 | D2 | E2 |
-| 行 3 | A3 | B3 | C3 | D3 | E3 |
-| 行 4 | A4 | B4 | C4 | D4 | E4 |
-| 行 5 | A5 | B5 | C5 | D5 | E5 |
+| Row 1 | A1 | B1 | C1 | D1 | E1 |
+| Row 2 | A2 | B2 | C2 | D2 | E2 |
+| Row 3 | A3 | B3 | C3 | D3 | E3 |
+| Row 4 | A4 | B4 | C4 | D4 | E4 |
+| Row 5 | A5 | B5 | C5 | D5 | E5 |
 
-### 3.2 战斗模式初始数据
+### 3.2 Battle Mode Initial Data
 
-| 数据项 | 初始值 |
+| Data item | Initial value |
 |---|---:|
-| 棋盘尺寸 | 5×5 |
-| 初始方块数量 | 3 |
-| 初始方块值 | 每个方块有 90% 概率为 2，10% 概率为 4 |
-| 玩家最大生命值 | 500 |
-| 玩家当前生命值 | 500 |
-| 敌方最大生命值 | 200 |
-| 敌方当前生命值 | 200 |
-| 初始分数 | 0 |
-| 初始有效回合数 | 0 |
-| 初始英雄技能次数 | 3 |
-| 初始连续答对题目数 | 0 |
-| 初始连续答错题目数 | 0 |
-| 初始死亡次数 | 0 |
-| 初始阻挡格 | 0 |
-| 初始隐藏任务 | 1 个 |
-| Bug 基础概率 | 5% |
+| Board size | 5×5 |
+| Initial tile count | 3 |
+| Initial tile value | Each tile has a 90% chance of being 2 and a 10% chance of being 4 |
+| Player max health | 500 |
+| Player current health | 500 |
+| Enemy max health | 200 |
+| Enemy current health | 200 |
+| Initial score | 0 |
+| Initial valid turn count | 0 |
+| Initial hero ability uses | 3 |
+| Initial consecutive correct answers | 0 |
+| Initial consecutive wrong answers | 0 |
+| Initial death count | 0 |
+| Initial blocker cells | 0 |
+| Initial hidden quest | 1 |
+| Base Bug probability | 5% |
 
-### 3.3 残局挑战模式初始数据
+### 3.3 Endgame Challenge Mode Initial Data
 
-| 数据项 | 初始值 |
+| Data item | Initial value |
 |---|---:|
-| 棋盘尺寸 | 5×5 |
-| 初始方块数量 | 20 |
-| 初始方块值 | 2、4、8、16、32 |
-| 初始分数 | 0 |
-| 初始有效回合数 | 0 |
-| 初始英雄技能次数 | 3 |
-| 初始阻挡格 | 0 |
-| Bug 机制 | 不启用 |
-| 玩家生命值 | 不使用 |
-| 敌方生命值 | 不使用 |
+| Board size | 5×5 |
+| Initial tile count | 20 |
+| Initial tile values | 2, 4, 8, 16, 32 |
+| Initial score | 0 |
+| Initial valid turn count | 0 |
+| Initial hero ability uses | 3 |
+| Initial blocker cells | 0 |
+| Bug mechanic | Not enabled |
+| Player health | Not used |
+| Enemy health | Not used |
 
-## 4 2048 移动规则
+## 4 2048 Movement Rules
 
-### 4.1 移动方向
+### 4.1 Movement Directions
 
-| 输入 | 方向 |
+| Input | Direction |
 |---|---|
-| `W` | 向上 |
-| `A` | 向左 |
-| `S` | 向下 |
-| `D` | 向右 |
+| `W` | Up |
+| `A` | Left |
+| `S` | Down |
+| `D` | Right |
 
-输入不区分大小写。空格会被删除后再判断。
+Input is case-insensitive. Spaces are removed before the input is evaluated.
 
-### 4.2 移动和合并顺序
+### 4.2 Movement and Merge Order
 
-每次收到方向输入后，先按正常 2048 规则预览一次移动，以判断输入是否有效。预览只用于判断，不得修改游戏状态。正常移动时，按照以下顺序处理：
+Each time a direction input is received, a move is first previewed according to normal 2048 rules to determine whether the input is valid. The preview is used only for this determination and must not modify the game state. For a normal move, process in the following order:
 
-1. 读取当前棋盘快照。
-2. 将方块沿输入方向移动，直到遇到棋盘边界、阻挡格或其他不能合并的方块。移动顺序是要根据输入的方向决定，向左移动就要从最左列开始模拟移动，同样向上移动就要从最上行开始模拟移动。
-3. 对相邻且数值相同的方块执行合并。
-4. 同一个原始方块在一次移动中最多参与一次合并。
-5. 合并后的方块继续沿输入方向移动，直到不能继续移动。
-6. 比较移动前后的棋盘。
-7. 如果棋盘没有变化，本次输入不是有效移动，不增加回合数、不生成新方块、不触发 Bug、不触发敌方技能。
-8. 如果棋盘发生变化，本次输入成为一个有效回合，进入第 5 节的回合结算。
+1. Read the current board snapshot.
+2. Move tiles in the input direction until they hit the board edge, a blocker cell, or another tile that cannot merge. The movement order depends on the input direction: moving left means simulating the movement starting from the leftmost column, and likewise moving up means simulating the movement starting from the topmost row.
+3. Merge adjacent tiles with the same value.
+4. The same original tile can take part in at most one merge per move.
+5. Merged tiles continue to move in the input direction until they can no longer move.
+6. Compare the board before and after the move.
+7. If the board has not changed, the input is not a valid move: the turn count does not increase, no new tile is generated, no Bug is triggered, and no enemy ability is triggered.
+8. If the board has changed, the input becomes a valid turn and proceeds to the turn resolution in Section 5.
 
-合并示例：
+Merge examples:
 
-- `2 2 2 0 0` 向左移动后为 `4 2 0 0 0`。
-- `2 2 2 2 0` 向左移动后为 `4 4 0 0 0`。
-- `4 4 8 8 0` 向左移动后为 `8 16 0 0 0`。
+- `2 2 2 0 0` after moving left becomes `4 2 0 0 0`.
+- `2 2 2 2 0` after moving left becomes `4 4 0 0 0`.
+- `4 4 8 8 0` after moving left becomes `8 16 0 0 0`.
 
-阻挡格不会被移动、合并或覆盖。方块可以移动到阻挡格之前，但不能穿过阻挡格。
+Blocker cells are never moved, merged, or overwritten. Tiles can move up to a blocker cell, but cannot pass through it.
 
-### 4.3 新方块生成
+### 4.3 New Tile Generation
 
-有效移动完成并结算合并后，系统在一个随机空格生成一个新方块：
-初始随机生成概率为
-- 90% 概率生成 `2`；
-- 10% 概率生成 `4`。
-从第20步开始为
-- 85% 概率生成 `2`；
-- 10% 概率生成 `4`；
-- 5% 概率生成 `8`。
-从第40步开始为
-- 75% 概率生成 `2`；
-- 15% 概率生成 `4`；
-- 7% 概率生成 `8`；
-- 3% 概率生成 `16`.
-后续不变。
-如果没有空格，不生成新方块。随机选择使用 Python 标准库 `random`。
+After a valid move is completed and merges are resolved, the system generates one new tile in a random empty cell:
+The initial random generation probabilities are:
+- 90% chance to generate `2`;
+- 10% chance to generate `4`.
 
-答错 Bug 题时，系统按照输入方向压缩方块，但不执行合并。只要至少有一个方块位置发生变化，仍然生成一个新方块；如果预览显示只有正常合并才能造成变化，则本次仍是有效回合，但棋盘保持不变且不生成新方块。
+Starting from step 20:
+- 85% chance to generate `2`;
+- 10% chance to generate `4`;
+- 5% chance to generate `8`.
 
-## 5 玩家回合结算
+Starting from step 40:
+- 75% chance to generate `2`;
+- 15% chance to generate `4`;
+- 7% chance to generate `8`;
+- 3% chance to generate `16`.
 
-战斗模式中，有效移动按照以下顺序结算：
+It stays unchanged afterwards.
+If there are no empty cells, no new tile is generated. Random selection uses the Python standard library `random`.
 
-1. 预览正常移动，确认本次输入有效，并保存回合开始快照。
-2. 按第 8 节判定是否触发 Bug；未触发或答对时执行正常移动，答错时执行无合并移动。
-3. 根据本次实际发生的合并结果增加分数并执行战斗奖励。
-4. 如果实际移动后棋盘有空格，生成一个新方块。
-5. 增加有效回合数。
-6. 更新隐藏任务进度，检查连续答题奖励，并在任务首次完成时生成惊喜盒子。
-7. 检查敌方行动、敌方技能和阻挡格持续时间。
-8. 检查玩家死亡、敌方死亡、棋盘失败和其他结束条件。
+When a Bug question is answered wrongly, the system compresses the tiles in the input direction but does not perform merges. As long as at least one tile changes position, a new tile is still generated; if the preview shows that only a normal merge could have caused a change, the move is still a valid turn, but the board remains unchanged and no new tile is generated.
 
-如果敌方技能改变了棋盘，技能效果发生在新方块生成之后。敌方技能不会重复计算本回合的合并分数或合并奖励。
+## 5 Player Turn Resolution
 
-## 6 合并分数和战斗奖励
+In Battle Mode, a valid move is resolved in the following order:
 
-### 6.1 分数
+1. Preview the normal move, confirm the input is valid, and save the turn-start snapshot.
+2. Determine whether a Bug is triggered according to Section 8; if it is not triggered or is answered correctly, perform the normal move; if answered wrongly, perform a move without merges.
+3. Add score and execute battle rewards based on the merge results that actually occurred.
+4. If the board has empty cells after the actual move, generate one new tile.
+5. Increase the valid turn count.
+6. Update hidden quest progress, check the consecutive-answer reward, and generate a Surprise Box when the quest is completed for the first time.
+7. Check enemy actions, enemy abilities, and blocker cell durations.
+8. Check player death, enemy death, board failure, and other end conditions.
 
-每次合并产生的新方块数值记为本次合并分数。例如两个 `8` 合并为 `16`，增加 16 分。
+If an enemy ability changes the board, the ability's effect takes place after the new tile is generated. Enemy abilities do not double-count this turn's merge score or merge rewards.
 
-一次移动中发生多次合并时，所有合并分数相加。
+## 6 Merge Score and Battle Rewards
 
-### 6.2 合并奖励
+### 6.1 Score
 
-每一次对应结果的合并都会增加对应的累计次数。累计次数达到阈值时，立即执行奖励，并将该类型累计次数减去阈值。超过阈值的次数保留，不会丢失。
+The value of the new tile produced by each merge is that merge's score. For example, merging two `8`s into `16` adds 16 points.
 
-| 合并结果 | 触发阈值 | 奖励 |
+When multiple merges occur in one move, all merge scores are added together.
+
+### 6.2 Merge Rewards
+
+Every merge with a given result increases the corresponding cumulative count. When the cumulative count reaches the threshold, the reward is executed immediately and the threshold is subtracted from that type's cumulative count. Counts exceeding the threshold are kept and not lost.
+
+| Merge result | Trigger threshold | Reward |
 |---:|---:|---|
-| 4 | 每 2 次 | 对敌方造成 10 点伤害。 |
-| 8 | 每 5 次 | 恢复玩家 10 点生命值，不超过最大生命值。 |
-| 16 | 每 3 次 | 最大生命值增加 10 点，并恢复 10 点生命值。 |
-| 32 | 每 2 次 | 对敌方造成 35 点伤害。 |
-| 64 | 每 1 次 | 增加 1 次英雄技能次数。英雄技能次数上限为 5。 |
-| 128 及以上 | 每 3 次 | 对敌方造成该合并结果数值的 1 倍伤害。 |
+| 4 | Every 2 times | Deal 10 damage to the enemy. |
+| 8 | Every 5 times | Restore 10 player health, not exceeding max health. |
+| 16 | Every 3 times | Increase max health by 10 and restore 10 health. |
+| 32 | Every 2 times | Deal 35 damage to the enemy. |
+| 64 | Every 1 time | Gain 1 hero ability use. The hero ability use cap is 5. |
+| 128 and above | Every 3 times | Deal damage to the enemy equal to 1× the merge result's value. |
 
-伤害结算后，敌方当前生命值最低为 0。治疗结算后，玩家当前生命值最高为最大生命值。
+After damage resolution, the enemy's current health is at minimum 0. After healing resolution, the player's current health is at maximum the max health.
 
-## 7 英雄技能
+## 7 Hero Abilities
 
-英雄技能在战斗模式和残局挑战模式中都可使用。三种英雄技能共用同一个资源池。每次成功使用消耗 1 次英雄技能次数。
+Hero abilities can be used in both Battle Mode and Endgame Challenge Mode. The three hero abilities share the same resource pool. Each successful use consumes 1 hero ability use.
 
-英雄技能次数为 0 时不能使用英雄技能。英雄技能次数最多为 5，超过 5 的恢复效果按 5 计算。
+When hero ability uses are 0, hero abilities cannot be used. Hero ability uses are at most 5; recovery effects beyond 5 are counted as 5.
 
-### 7.1 英雄技能列表
+### 7.1 Hero Ability List
 
-| 输入 | 名称 | 效果 | 目标 |
+| Input | Name | Effect | Target |
 |---|---|---|---|
-| | 自毁程序 | 删除一个数字方块并变为空格。 DVA_self_destruct.ogg| 必须选择存在数字方块的坐标。 |
-| | 改变数字 | 将一个数字方块改为其相邻等级。 Duplicate.ogg| 必须选择存在数字方块的坐标，再选择“降低”或“提高”。 |
-|  | 返回上一步 | 恢复到上一个完整回合结束时的状态。tracer.ogg | 不需要坐标；每局最多使用 3 次。 |
+| | Self-Destruct Program | Delete one number tile, turning it into an empty cell. DVA_self_destruct.ogg | A coordinate containing a number tile must be selected. |
+| | Change Number | Change one number tile to an adjacent level. Duplicate.ogg | A coordinate containing a number tile must be selected, then "Decrease" or "Increase" must be selected. |
+| | Return to Previous Step | Restore to the state at the end of the previous complete turn. tracer.ogg | No coordinate needed; can be used at most 3 times per game. |
 
-每回合只能使用一次技能
+Only one ability can be used per turn.
 
-### 7.2 改变数字
+### 7.2 Change Number
 
-改变数字时：
+When changing a number:
 
-- “降低”将数字除以 2；
-- “提高”将数字乘以 2；
-- 数字不能降低到 `1`；
-- 数字不能提高到 `512` 以上；
-- 改变数字不会直接触发合并；
-- 改编后的数字不会算在合并奖励的触发次数中
-- 改变数字后不生成新方块；
-- 改变数字不会增加回合数；
-- 改变数字不会触发敌方技能；
-- 改变数字形成的可合并状态会在下一次有效移动时处理。
+- "Decrease" divides the number by 2;
+- "Increase" multiplies the number by 2;
+- A number cannot be decreased to `1`;
+- A number cannot be increased above `512`;
+- Changing a number does not directly trigger a merge;
+- Changed numbers do not count toward the trigger counts of merge rewards;
+- No new tile is generated after changing a number;
+- Changing a number does not increase the turn count;
+- Changing a number does not trigger enemy abilities;
+- Any mergeable state formed by changing a number is handled in the next valid move.
 
-### 7.3 返回上一步
+### 7.3 Return to Previous Step
 
-每个有效回合开始、并且确认本次输入有效后，先保存一个快照。快照表示执行该回合前的状态，包含：
+After each valid turn begins and the input is confirmed valid, a snapshot is saved first. The snapshot represents the state before that turn is executed, and includes:
 
-- 除英雄技能次数和返回上一步的已用次数以外的全部游戏状态；
-- 棋盘、阻挡格及剩余持续回合；
-- 玩家和敌方的当前生命值与最大生命值；
-- 分数、有效回合数和所有合并累计次数；
-- 隐藏任务、惊喜盒子和题目使用记录；
-- 敌方技能计时器、上一次敌方技能和方向反转状态；
-- 连续答对题目数、连续答错题目数和死亡次数；
-- 答题救援已用状态；
-- 随机数生成器状态。
+- All game state except hero ability uses and the used count of Return to Previous Step;
+- The board, blocker cells, and their remaining duration in turns;
+- The current and max health of the player and the enemy;
+- The score, valid turn count, and all merge cumulative counts;
+- The hidden quest, Surprise Box, and question usage records;
+- The enemy ability timer, the last enemy ability, and the direction-reversal state;
+- The consecutive correct answers, consecutive wrong answers, and death count;
+- The used state of the quiz rescue;
+- The random number generator state.
 
-使用返回上一步后，恢复最近一次快照，但已经消耗的英雄技能次数不恢复。返回上一步本身不会生成快照，也不会保存新的可撤销状态，不能连续撤销同一回合。每局最多成功使用 3 次返回上一步。
+After using Return to Previous Step, the most recent snapshot is restored, but the hero ability uses already consumed are not restored. Return to Previous Step itself does not generate a snapshot and does not save any new undoable state, and the same turn cannot be undone consecutively. Return to Previous Step can be successfully used at most 3 times per game.
 
-## 8 Bug 和答题机制
+## 8 Bug and Quiz Mechanic
 
-### 8.1 Bug 触发
+### 8.1 Bug Trigger
 
-Bug 只在战斗模式的有效移动中判定。每次有效移动开始时生成一个 `[0, 1)` 范围内的随机数：
+A Bug is determined only during valid moves in Battle Mode. At the start of each valid move, a random number in the range `[0, 1)` is generated:
 
-- 随机数小于当前 Bug 概率时触发 Bug；
-- 否则不触发 Bug。
+- If the random number is less than the current Bug probability, a Bug is triggered;
+- Otherwise, no Bug is triggered.
 
-当前 Bug 概率为：
+The current Bug probability is:
 
 ```text
-min(5% + floor((已完成有效回合数 + 1) / 10) × 5%, 30%)
+min(5% + floor((completed valid turns + 1) / 10) × 5%, 30%)
 ```
 
-也就是说：
+That is:
 
-- 第 1 至 9 个有效回合：5%；
-- 第 10 至 19 个有效回合：10%；
-- 第 20 至 29 个有效回合：15%；
-- 第 30 至 39 个有效回合：20%；
-- 第 40 至 49 个有效回合：25%；
-- 第 50 个有效回合起：30%；
+- Valid turns 1 to 9: 5%;
+- Valid turns 10 to 19: 10%;
+- Valid turns 20 to 29: 15%;
+- Valid turns 30 to 39: 20%;
+- Valid turns 40 to 49: 25%;
+- From valid turn 50 onward: 30%;
 
-### 8.2 答题
+### 8.2 Answering Questions
 
-触发 Bug 后，从本地题库随机选择一道题。题目类型只有单选题和填空题。题目显示后暂停回合，玩家必须提交答案。
+After a Bug is triggered, one question is randomly chosen from the local question bank. There are only two question types: multiple choice and fill-in-the-blank. After the question is displayed, the turn is paused and the player must submit an answer.
 
-答对时：
+When answered correctly:
 
-- 本次移动正常执行移动和合并；
-- 正常增加分数；
-- 正常执行合并奖励；
-- 连续答对题目数加 1，连续答错题目数归零。
+- The move executes normal movement and merging;
+- Score is added normally;
+- Merge rewards are executed normally;
+- Consecutive correct answers increases by 1, and consecutive wrong answers resets to zero.
 
-答错时：
+When answered wrongly:
 
-- 方块执行移动；
-- 本次移动不执行任何合并；
-- 不增加合并分数；
-- 不执行合并奖励；
-- 连续答对题目数归零，连续答错题目数加 1；
-- 本次有效移动仍增加回合数；
-- 本次回合仍然生成新方块；
-- 本次回合仍然可能触发敌方技能。
+- Tiles execute the move;
+- No merges are performed in this move;
+- No merge score is added;
+- No merge rewards are executed;
+- Consecutive correct answers resets to zero, and consecutive wrong answers increases by 1;
+- This valid move still increases the turn count;
+- A new tile is still generated this turn;
+- Enemy abilities may still be triggered this turn.
 
-连续答对 5 道 Bug 题时，立即恢复 1 次英雄技能次数，然后连续答对题目数归零。
+When 5 Bug questions are answered correctly in a row, 1 hero ability use is restored immediately, and then consecutive correct answers resets to zero.
 
-连续答错 5 道 Bug 题时，立即扣除玩家当前生命值，数值等于当前最大生命值的 20%（向下取整），当前生命值最低为 0；玩家最大生命值不受影响。扣除后立即将连续答错题目数归零，重新开始计数。此惩罚结算后仍按第 10 节顺序检查玩家死亡等结束条件。
+When 5 Bug questions are answered wrongly in a row, the player's current health is immediately reduced by an amount equal to 20% of the current max health (rounded down), with current health at minimum 0; the player's max health is not affected. After the deduction, consecutive wrong answers is immediately reset to zero and counting starts again. After this penalty is resolved, end conditions such as player death are still checked in the order of Section 10.
 
-### 8.3 题库格式
+### 8.3 Question Bank Format
 
-题库文件为 `data/questions.json`，格式如下：
+The question bank file is `data/questions.json`, in the following format:
 
 ```json
 [
   {
     "id": "q001",
     "type": "choice",
-    "question": "Python 中哪个关键字用于定义函数？",
+    "question": "Which keyword is used to define a function in Python?",
     "options": ["A. func", "B. def", "C. function", "D. make"],
     "answer": "B",
-    "explanation": "Python 使用 def 定义函数。"
+    "explanation": "Python uses def to define functions."
   },
   {
     "id": "q002",
     "type": "fill",
-    "question": "Python 列表的第一个索引是 ____。",
+    "question": "The first index of a Python list is ____.",
     "answer": "0",
-    "explanation": "Python 使用从 0 开始的索引。"
+    "explanation": "Python uses zero-based indexing."
   }
 ]
 ```
 
-选择题答案必须保存为大写字母。填空题比较时，去除首尾空格并忽略大小写。
+Answers to multiple-choice questions must be stored as uppercase letters. When comparing fill-in-the-blank answers, leading and trailing spaces are removed and case is ignored.
 
-同一局中，题目在所有题目都使用过之前不得重复。题库为空或文件读取失败时，程序必须显示错误并安全退出当前游戏，不得伪造题目或自动判定正确。
+Within the same game, questions must not repeat until all questions have been used. If the question bank is empty or the file fails to load, the program must display an error and safely exit the current game, and must not fabricate questions or automatically judge answers as correct.
 
-## 9 战斗模式
+## 9 Battle Mode
 
-### 9.1 敌方行动
+### 9.1 Enemy Actions
 
-战斗模式只有一个难度，不提供难度选择。每个有效回合最多触发一次敌方技能。技能触发使用固定回合间隔：
+Battle Mode has only one difficulty, and no difficulty selection is provided. Each valid turn triggers at most one enemy ability. Ability triggers use a fixed turn interval:
 
-| 首次技能 | 后续技能间隔 |
+| First ability | Subsequent ability interval |
 |---:|---:|
-| 第 8 回合 | 每 8 回合 |
+| Turn 8 | Every 8 turns |
 
-技能触发时，从当前可用技能中随机选择一个。相同技能不能连续两次触发。技能触发后，计时器重置。
+When an ability triggers, one is randomly chosen from the currently available abilities. The same ability cannot trigger twice in a row. After an ability triggers, the timer is reset.
 
-### 9.2 敌方技能
+### 9.2 Enemy Abilities
 
-| 技能 | 效果 |
+| Ability | Effect |
 |---|---|
-| 裂地重拳 | 随机打乱所有数字方块的位置，数字值不变；阻挡格位置不变。meteor_strike.ogg |
-| 暗影吞噬 | 随机删除一个数字方块；若没有数字方块，则不产生效果。reaper.ogg |
-| 系统骇入 | 下一次有效移动的方向反转；英雄技能仍然可以使用。EMP.ogg |
-| 重力场 | 将棋盘上所有大于 16 的数字降低一个等级；例如 32 变为 16。sigma.ogg |
-| 笼中斗 | 在一个随机空格生成阻挡格，持续 3 个有效回合。若没有空格，则不产生效果。 SSVGG.ogg|
+| Ground-Splitting Punch | Randomly shuffles the positions of all number tiles; tile values are unchanged; blocker cell positions are unchanged. meteor_strike.ogg |
+| Shadow Devour | Randomly deletes one number tile; if there are no number tiles, it has no effect. reaper.ogg |
+| System Hack | The direction of the next valid move is reversed; hero abilities can still be used. EMP.ogg |
+| Gravity Field | Lowers all numbers on the board greater than 16 by one level; for example, 32 becomes 16. sigma.ogg |
+| Cage Match | Generates a blocker cell in one random empty cell, lasting 3 valid turns. If there are no empty cells, it has no effect. SSVGG.ogg |
 
-敌方每过两个回合固定发动攻击扣除玩家15滴血
-系统骇入的方向反转发生在下一次方向输入的最开始，早于有效移动预览和 Bug 判定。阻挡格生成时记录到期回合数为“当前有效回合数加 3”。每个有效回合结束时，移除到期回合数小于等于当前有效回合数的阻挡格；新生成的阻挡格不会在生成当回合减少持续时间。
+Every two turns, the enemy launches an attack at a fixed interval, deducting 15 health from the player.
+The direction reversal from System Hack takes effect at the very start of the next direction input, earlier than the valid-move preview and Bug determination. When a blocker cell is generated, its expiry turn is recorded as "current valid turn count plus 3". At the end of each valid turn, blocker cells whose expiry turn is less than or equal to the current valid turn count are removed; a newly generated blocker cell does not have its duration reduced in the turn it is generated.
 
-### 9.3 隐藏任务
+### 9.3 Hidden Quest
 
-每局开始时从任务池随机选择 1 个任务。任务一旦选择，本局任务内容显示在状态栏中。
+At the start of each game, 1 quest is randomly selected from the quest pool. Once selected, the quest content is shown in the status bar for the rest of the game.
 
-| 任务编号 | 任务 | 完成条件 |
+| Quest ID | Quest | Completion condition |
 |---|---|---|
-| T01 | 达到512 | 棋盘曾经出现过数值至少为 512 的方块。 |
-| T02 | 快速合并 | 在 7 个有效回合内完成至少 5 次合并。 |
-| T03 | 高分行动 | 单个有效回合获得至少 500 分。 |
+| T01 | Reach 512 | A tile with a value of at least 512 has ever appeared on the board. |
+| T02 | Quick Merge | Complete at least 5 merges within 7 valid turns. |
+| T03 | High-Score Action | Earn at least 500 points in a single valid turn. |
 
-任务完成后，在一个随机空格生成 1 个惊喜盒子。生成位置不能是数字方块、阻挡格或已有惊喜盒子的位置；没有可用空格时，不生成盒子，也不在之后补发。每局最多完成 1 个隐藏任务和生成 1 个惊喜盒子。
+After the quest is completed, 1 Surprise Box is generated in a random empty cell. The generation position cannot be a number tile, a blocker cell, or the position of an existing Surprise Box; if there are no available empty cells, no box is generated and none is issued later. At most 1 hidden quest can be completed and 1 Surprise Box generated per game.
 
-### 9.4 惊喜盒子
+### 9.4 Surprise Box
 
-惊喜盒子占据一个空格。方块移动到惊喜盒子所在位置时，立即触发效果，然后该位置变为空格。每次生成的盒子从下表随机选择一种：
+A Surprise Box occupies one empty cell. When a tile moves onto the position of a Surprise Box, the effect triggers immediately, and then that position becomes an empty cell. Each generated box randomly chooses one type from the table below:
 
-| 类型 | 效果 |
+| Type | Effect |
 |---|---|
-| Heroes Never Die | 将玩家当前生命值恢复到最大生命值。mercy.ogg |
-| 龙刃出鞘 | 对敌方造成 100 点伤害。dragon_blade.ogg |
-| 灵狐为我引路 | 将英雄技能次数增加 3，最高为 5。 kitsune_rush.ogg|
-| 重力场 | 将棋盘上最大的数字降低一个等级。sigma.ogg |
-| 生化之球 | 扣除玩家 10 点当前生命值；当前生命值最低为 0。moira.ogg |
-| 笼中斗 | 在当前移动结束后的随机空格生成阻挡格，持续 3 个有效回合；没有可用空格时不产生效果。SSVGG.ogg |
+| Heroes Never Die | Restores the player's current health to max health. mercy.ogg |
+| Dragon Blade Unsheathed | Deals 100 damage to the enemy. dragon_blade.ogg |
+| Spirit Fox, Guide Me | Increases hero ability uses by 3, up to a maximum of 5. kitsune_rush.ogg |
+| Gravity Field | Lowers the largest number on the board by one level. sigma.ogg |
+| Biotic Orb | Deducts 10 of the player's current health; current health is at minimum 0. moira.ogg |
+| Cage Match | Generates a blocker cell in a random empty cell after the current move ends, lasting 3 valid turns; if there are no available empty cells, it has no effect. SSVGG.ogg |
 
-## 10 战斗模式胜负条件
+## 10 Battle Mode Win/Loss Conditions
 
-按以下优先级检查结束条件：
+End conditions are checked in the following priority order:
 
-1. 敌方当前生命值小于等于 0：玩家胜利。
-2. 玩家当前生命值小于等于 0：死亡次数加 1，进入答题救援。
-3. 棋盘没有有效移动：进入答题救援。
-4. 答题救援失败：玩家失败。
+1. Enemy current health is less than or equal to 0: the player wins.
+2. Player current health is less than or equal to 0: death count increases by 1, and the quiz rescue begins.
+3. The board has no valid move: the quiz rescue begins.
+4. The quiz rescue fails: the player loses.
 
-### 10.1 答题救援
+### 10.1 Quiz Rescue
 
-死亡次数和棋盘卡死触发的救援共用同一份救援资源，同一局最多允许 1 次答题救援，不区分触发原因。玩家死亡时死亡次数始终加 1 并记录，但只有第 1 次死亡可以进入救援；第 2 次及以后的死亡直接判定玩家失败，不再进入救援。
+Rescues triggered by death and by a stuck board share the same rescue resource; at most 1 quiz rescue is allowed per game, regardless of the trigger reason. When the player dies, the death count always increases by 1 and is recorded, but only the 1st death can enter the rescue; the 2nd and later deaths directly result in the player losing, with no further rescue.
 
-救援阶段连续回答 3 道新题：
+During the rescue phase, 3 new questions are answered in a row:
 
-- 3 道全部答对：救援成功，继续游戏；
-- 任意一道答错：救援失败，本局结束；
-- 玩家死亡触发救援时：玩家生命值恢复为最大生命值的 50%，向下取整；
-- 棋盘无有效移动触发救援时：随机删除 3 个数字方块，然后继续游戏；
-- 救援成功后连续答对题目数和连续答错题目数均归零；
-- 同一局最多允许 1 次答题救援（无论由死亡还是棋盘卡死触发）。
+- All 3 answered correctly: the rescue succeeds and the game continues;
+- Any one answered wrongly: the rescue fails and the game ends;
+- When the rescue is triggered by player death: the player's health is restored to 50% of max health, rounded down;
+- When the rescue is triggered by the board having no valid move: 3 number tiles are randomly deleted, then the game continues;
+- After a successful rescue, both consecutive correct answers and consecutive wrong answers reset to zero;
+- At most 1 quiz rescue is allowed per game (whether triggered by death or by a stuck board).
 
 
-## 11 残局挑战模式
+## 11 Endgame Challenge Mode
 
-### 11.1 初始棋盘生成
+### 11.1 Initial Board Generation
 
-生成 20 个随机方块，数值概率如下：
+Generate 20 random tiles, with value probabilities as follows:
 
-| 方块值 | 概率 |
+| Tile value | Probability |
 |---:|---:|
 | 2 | 45% |
 | 4 | 30% |
@@ -387,14 +390,14 @@ min(5% + floor((已完成有效回合数 + 1) / 10) × 5%, 30%)
 | 16 | 7% |
 | 32 | 3% |
 
-初始棋盘生成后必须满足以下条件：
+After the initial board is generated, it must satisfy the following conditions:
 
-- 至少有 1 个空格；
-- 至少存在 1 个有效移动；
-- 不得生成阻挡格；
-- 不得生成数值大于 32 的方块。
+- At least 1 empty cell;
+- At least 1 valid move exists;
+- No blocker cells may be generated;
+- No tiles with a value greater than 32 may be generated.
 
-不满足条件时重新生成，最多尝试 100 次。100 次仍失败时，使用固定棋盘：
+If the conditions are not met, regenerate, with at most 100 attempts. If all 100 attempts fail, use the fixed board:
 
 ```text
   2   4   8  16   2
@@ -404,64 +407,64 @@ min(5% + floor((已完成有效回合数 + 1) / 10) × 5%, 30%)
   0   2  16   0   0
 ```
 
-### 11.2 目标
+### 11.2 Objectives
 
-每局从目标池随机选择 1 个目标：
+At the start of each game, 1 objective is randomly selected from the objective pool:
 
-| 目标编号 | 目标 | 成功条件 |
+| Objective ID | Objective | Success condition |
 |---|---|---|
-| C01 | 合成 256 | 棋盘出现数值至少为 256 的方块。 |
-| C02 | 取得高分 | 总分达到 5000。 |
-| C03 | 完成合并 | 累计完成至少 8 次合并。 |
-| C04 | 保持空间 | 达到 128 时，棋盘至少有 3 个空格。 |
-| C05 | 3重 128 | 同时拥有至少 3 个 128 方块。 |
+| C01 | Merge 256 | A tile with a value of at least 256 appears on the board. |
+| C02 | Achieve a High Score | Total score reaches 5000. |
+| C03 | Complete Merges | Complete at least 8 merges cumulatively. |
+| C04 | Keep Space | When 128 is reached, the board has at least 3 empty cells. |
+| C05 | Triple 128 | Have at least 3 tiles of 128 at the same time. |
 
-### 11.3 结束条件
+### 11.3 End Conditions
 
-- 达成目标：挑战成功；
-- 棋盘没有有效移动且无法使用返回上一步恢复有效移动：挑战失败；
-- 玩家主动退出：不记录为成功成绩。
+- Objective achieved: the challenge succeeds;
+- The board has no valid move and Return to Previous Step cannot restore a valid move: the challenge fails;
+- The player quits voluntarily: not recorded as a successful result.
 
-残局模式不触发、Bug、隐藏任务、惊喜盒子和答题救援。会触发敌方技能。
+Endgame mode does not trigger Bugs, hidden quests, Surprise Boxes, or quiz rescue. Enemy abilities are triggered.
 
-## 12 图形界面输入
+## 12 Graphical Interface Input
 
-游戏使用桌面 GUI 界面运行，不读取终端文本输入。玩家通过键盘快捷键、鼠标点击棋盘方块和点击界面按钮进行操作；坐标选择通过点击棋盘上的方块完成，不需要输入字母加数字的坐标文本。
+The game runs with a desktop GUI and does not read terminal text input. The player operates through keyboard shortcuts, mouse clicks on board tiles, and clicks on interface buttons; coordinate selection is done by clicking tiles on the board, and no letter-plus-number coordinate text input is needed.
 
-### 12.1 主游戏输入
+### 12.1 Main Game Input
 
-| 输入方式 | 功能 |
+| Input method | Function |
 |---|---|
-| 键盘 `W`/`A`/`S`/`D` 或方向键 | 尝试朝对应方向进行一次移动。 |
-| 方向按钮（UP / DOWN / LEFT / RIGHT） | 与对应方向键功能相同。 |
-| 键盘 `H` 或 HELP 按钮 | 显示当前状态、目标、英雄技能次数和规则提示。 |
-| 键盘 `L` 或 LEADERBOARD 按钮 | 显示排行榜。 |
-| 键盘 `Q` 或 RETURN TO MENU 按钮 | 退出当前游戏并返回主菜单。 |
-| 键盘 `P` | 提示玩家选择一个技能按钮；不直接打开菜单（技能按钮始终显示在侧边栏）。 |
+| Keyboard `W`/`A`/`S`/`D` or arrow keys | Attempt one move in the corresponding direction. |
+| Direction buttons (UP / DOWN / LEFT / RIGHT) | Same function as the corresponding arrow keys. |
+| Keyboard `H` or HELP button | Show the current status, objective, hero ability uses, and rule hints. |
+| Keyboard `L` or LEADERBOARD button | Show the leaderboard. |
+| Keyboard `Q` or RETURN TO MENU button | Quit the current game and return to the main menu. |
+| Keyboard `P` | Prompt the player to select an ability button; does not directly open a menu (ability buttons are always shown in the sidebar). |
 
-### 12.2 英雄技能操作
+### 12.2 Hero Ability Operation
 
-三个技能按钮（DELETE、CHANGE VALUE、RECALL）始终显示在侧边栏，点击对应按钮即为选择该技能；没有数字或字母快捷键菜单。
+The three ability buttons (DELETE, CHANGE VALUE, RECALL) are always shown in the sidebar, and clicking the corresponding button selects that ability; there is no numeric or letter shortcut menu.
 
-- 使用 DELETE 或 CHANGE VALUE 前，先点击棋盘上一个数字方块完成坐标选择；点击空格、阻挡格或棋盘外区域不构成有效选择。
-- CHANGE VALUE 选中方块后，弹出窗口提供“INCREASE”和“DECREASE”两个按钮，分别对应“提高”和“降低”。
-- RECALL 不需要选择坐标，点击按钮立即尝试执行。
-- CANCEL SELECTION 按钮用于取消当前进行中的技能选择。
+- Before using DELETE or CHANGE VALUE, first click a number tile on the board to complete the coordinate selection; clicking an empty cell, a blocker cell, or an area outside the board is not a valid selection.
+- After CHANGE VALUE selects a tile, a popup window provides two buttons, "INCREASE" and "DECREASE", corresponding to "Increase" and "Decrease" respectively.
+- RECALL does not require selecting a coordinate; clicking the button attempts to execute it immediately.
+- The CANCEL SELECTION button is used to cancel the ability selection currently in progress.
 
-### 12.3 非法操作
+### 12.3 Illegal Operations
 
-非法操作不得改变任何游戏状态。界面显示错误提示（弹窗或状态栏文字）后，继续等待下一次输入。以下情况均属于非法操作：
+Illegal operations must not change any game state. The interface displays an error message (a popup or status bar text) and then continues to wait for the next input. All of the following are illegal operations:
 
-- 游戏结束或救援/惩罚流程进行中时尝试移动或使用技能；
-- 英雄技能次数为 0 时尝试使用英雄技能；
-- 删除或改变数字时选择空格、阻挡格或没有方块的位置；
-- 返回上一步没有可恢复快照，或已达到每局 3 次上限；
-- 改变数字时点击“INCREASE”或“DECREASE”之外没有其他选项，不存在格式错误输入；
-- 选择题答题窗口只提供题目给定的选项按钮，填空题答题窗口要求提交非空文本。
+- Attempting to move or use an ability while the game is over or while a rescue/penalty process is in progress;
+- Attempting to use a hero ability when hero ability uses are 0;
+- Selecting an empty cell, a blocker cell, or a position with no tile when deleting or changing a number;
+- Return to Previous Step has no restorable snapshot, or has reached the limit of 3 uses per game;
+- When changing a number, there are no options other than clicking "INCREASE" or "DECREASE", so there is no malformed input;
+- The multiple-choice answer window only provides the option buttons given by the question, and the fill-in-the-blank answer window requires submitting non-empty text.
 
-## 13 排行榜和本地文件
+## 13 Leaderboard and Local Files
 
-### 13.1 文件结构
+### 13.1 File Structure
 
 ```text
 data/
@@ -469,11 +472,11 @@ data/
   leaderboard.json
 ```
 
-如果 `data` 目录不存在，程序启动时创建该目录。
+If the `data` directory does not exist, the program creates it at startup.
 
-### 13.2 排行榜记录
+### 13.2 Leaderboard Records
 
-每条记录使用以下字段：
+Each record uses the following fields:
 
 ```json
 {
@@ -487,97 +490,97 @@ data/
 }
 ```
 
-字段规则：
+Field rules:
 
-- `name`：去除首尾空格后的玩家名称，长度 1 至 20 个字符；
-- `mode`：只能是 `battle` 或 `challenge`；
-- `difficulty`：战斗模式固定为 `easy`（唯一难度），挑战模式固定为 `none`；
-- `score`：非负整数；
-- `turns`：非负整数；
-- `result`：只能是 `win`、`loss` 或 `quit`；
-- `date`：使用 `YYYY-MM-DD` 格式。
+- `name`: the player name with leading and trailing spaces removed, 1 to 20 characters long;
+- `mode`: can only be `battle` or `challenge`;
+- `difficulty`: fixed to `easy` (the only difficulty) in Battle Mode, and fixed to `none` in Challenge Mode;
+- `score`: a non-negative integer;
+- `turns`: a non-negative integer;
+- `result`: can only be `win`, `loss`, or `quit`;
+- `date`: uses the `YYYY-MM-DD` format.
 
-### 13.3 排序和异常处理
+### 13.3 Sorting and Error Handling
 
-排行榜只记录战斗胜利和残局挑战成功的记录，不记录主动退出和失败记录。排行榜最多保留 5 条记录，排序规则依次为：
+The leaderboard only records battle wins and endgame challenge successes; it does not record voluntary quits or failures. The leaderboard keeps at most 5 records, sorted in the following order:
 
-1. 分数从高到低；
-2. 分数相同时，有效回合数从少到多；
-3. 仍相同时，日期较早的记录在前。
+1. Score from high to low;
+2. When scores are equal, valid turn count from low to high;
+3. When still equal, the record with the earlier date comes first.
 
-JSON 文件不存在时视为空排行榜。JSON 格式错误、字段缺失或写入失败时，程序显示错误并继续运行；不得覆盖原文件，不得因排行榜错误导致游戏崩溃。
+If the JSON file does not exist, it is treated as an empty leaderboard. If the JSON format is invalid, fields are missing, or writing fails, the program displays an error and keeps running; it must not overwrite the original file, and a leaderboard error must not crash the game.
 
-## 14 程序模块边界
+## 14 Program Module Boundaries
 
-实现应至少包含以下职责边界。模块名称可以不同，但职责不得混在主循环中：
+The implementation must contain at least the following responsibility boundaries. Module names may differ, but responsibilities must not be mixed into the main loop:
 
-| 模块 | 职责 |
+| Module | Responsibility |
 |---|---|
-| `GameBoard` | 保存棋盘、移动、合并、生成方块、坐标检查和有效移动检查。 |
-| `BattleManager` | 保存生命值，处理伤害、治疗、奖励和战斗胜负。 |
-| `AbilityManager` | 管理英雄技能次数、英雄技能使用和回合快照。 |
-| `QuizManager` | 读取题库、抽题、检查答案和管理答题连击。 |
-| `EventManager` | 管理 Bug、敌方技能、隐藏任务和惊喜盒子。 |
-| `Leaderboard` | 读取、验证、排序和保存排行榜。 |
-| `AudioManager` | 管理背景音乐循环队列和技能/效果音效的播放、停止与叠加规则（见第 17 节）。 |
-| `main.py` | 构建 GUI 窗口、绑定按钮和键盘事件、调用模块并控制游戏流程。 |
+| `GameBoard` | Stores the board, movement, merging, tile generation, coordinate checking, and valid-move checking. |
+| `BattleManager` | Stores health, and handles damage, healing, rewards, and battle win/loss. |
+| `AbilityManager` | Manages hero ability uses, hero ability usage, and turn snapshots. |
+| `QuizManager` | Loads the question bank, draws questions, checks answers, and manages answer streaks. |
+| `EventManager` | Manages Bugs, enemy abilities, hidden quests, and Surprise Boxes. |
+| `Leaderboard` | Loads, validates, sorts, and saves the leaderboard. |
+| `AudioManager` | Manages the background music loop queue and the playing, stopping, and layering rules of ability/effect sound effects (see Section 17). |
+| `main.py` | Builds the GUI window, binds buttons and keyboard events, calls modules, and controls the game flow. |
 
-核心逻辑必须可以脱离 GUI 显示进行测试。随机机制应允许传入随机数生成器或随机种子，以便测试重现。
+Core logic must be testable independently of the GUI display. Random mechanics should allow a random number generator or random seed to be passed in, so that tests can be reproduced.
 
-## 15 必须通过的测试
+## 15 Required Tests
 
-实现完成后至少测试以下情况：
+After implementation is complete, at least the following cases must be tested:
 
-1. 空棋盘向任意方向移动时，不增加回合数。
-2. `2 2 2 2 0` 向左移动结果为 `4 4 0 0 0`。
-3. 一次移动中同一个方块不会合并两次。
-4. 阻挡格不会被覆盖，方块不能穿过阻挡格。
-5. 无效移动不会生成新方块。
-6. 有效移动只生成一个新方块。
-7. Bug 答对时正常合并，答错时只移动不合并。
-8. Bug 概率在第 10、20、30 个有效回合按规则变化。
-9. 合并奖励达到阈值后正确触发，超过阈值的累计次数保留。
-10. 英雄技能次数不能超过 5。
-11. 返回上一步不恢复已经消耗英雄技能次数。
-12. 敌方技能不会在同一回合触发两次。
-13. 敌方死亡时优先判定玩家胜利。
-14. 答题救援最多触发一次，且死亡与棋盘卡死共用同一份救援资源。
-15. 第 2 次死亡直接判定失败，不再进入救援。
-16. 连续答错 5 道 Bug 题时扣除当前最大生命值 20%（向下取整），并将连续答错题目数归零。
-17. 非法输入或非法操作不改变游戏状态。
-18. 缺失或损坏的 JSON 文件不会导致程序崩溃。
-19. 排行榜只保留前 5 条，并按规定顺序排序。
+1. Moving an empty board in any direction does not increase the turn count.
+2. `2 2 2 2 0` moved left results in `4 4 0 0 0`.
+3. The same tile does not merge twice in one move.
+4. Blocker cells are not overwritten, and tiles cannot pass through blocker cells.
+5. An invalid move does not generate a new tile.
+6. A valid move generates exactly one new tile.
+7. When a Bug is answered correctly, merges happen normally; when answered wrongly, tiles only move without merging.
+8. The Bug probability changes according to the rules at valid turns 10, 20, and 30.
+9. Merge rewards trigger correctly after reaching the threshold, and counts exceeding the threshold are kept.
+10. Hero ability uses cannot exceed 5.
+11. Return to Previous Step does not restore hero ability uses that have already been consumed.
+12. Enemy abilities do not trigger twice in the same turn.
+13. When the enemy dies, the player's victory is determined first.
+14. The quiz rescue triggers at most once, and death and a stuck board share the same rescue resource.
+15. The 2nd death directly results in failure, with no further rescue.
+16. When 5 Bug questions are answered wrongly in a row, 20% of the current max health (rounded down) is deducted, and consecutive wrong answers resets to zero.
+17. Illegal input or illegal operations do not change the game state.
+18. Missing or corrupted JSON files do not crash the program.
+19. The leaderboard keeps only the top 5 and is sorted in the specified order.
 
-## 16 实现优先级
+## 16 Implementation Priority
 
-按以下顺序实现：
+Implement in the following order:
 
-1. 棋盘表示、方向移动、合并和新方块生成。
-2. 有效移动判断、回合计数和分数。
-3. 战斗生命值、合并奖励和战斗胜负。
-4. 三种英雄技能和快照恢复。
-5. Bug、题库和答题救援。
-6. 敌方技能、隐藏任务和惊喜盒子。
-7. 残局挑战模式。
-8. 排行榜、异常处理和测试。
+1. Board representation, directional movement, merging, and new tile generation.
+2. Valid-move determination, turn counting, and score.
+3. Battle health, merge rewards, and battle win/loss.
+4. The three hero abilities and snapshot restoration.
+5. Bugs, the question bank, and quiz rescue.
+6. Enemy abilities, hidden quests, and Surprise Boxes.
+7. Endgame Challenge Mode.
+8. Leaderboard, error handling, and tests.
 
-## 17 音乐和语音
+## 17 Music and Voice
 
-游戏不使用图片素材，但使用背景音乐和语音/音效。音频文件保存在 `music/` 目录，均为 `.ogg` 格式。
+The game does not use image assets, but uses background music and voice lines/sound effects. Audio files are stored in the `music/` directory, all in `.ogg` format.
 
-### 17.1 主菜单音乐
+### 17.1 Main Menu Music
 
-显示主菜单时，从以下三首曲目中随机播放一首：
+When the main menu is displayed, one of the following three tracks is played at random:
 
 - `Colosseo.ogg`
 - `kiriko_origin.ogg`
 - `midtown.ogg`
 
-每首曲目播放结束后，从三首中重新随机选择一首（包括可能再次选中刚播放完的一首），循环往复，直到玩家离开主菜单（进入战斗模式或残局挑战模式）。进入战斗模式或残局挑战模式时，主菜单音乐停止。
+After each track finishes, one of the three is randomly chosen again (including possibly choosing the track that just finished), looping repeatedly until the player leaves the main menu (entering Battle Mode or Endgame Challenge Mode). When Battle Mode or Endgame Challenge Mode is entered, the main menu music stops.
 
-### 17.2 战斗音乐
+### 17.2 Battle Music
 
-进入战斗模式后，播放固定顺序的战斗音乐队列，按以下顺序循环播放整组：
+After entering Battle Mode, a fixed-order battle music queue is played, looping the whole group in the following order:
 
 1. `select_hero.ogg`
 2. `round1.ogg`
@@ -585,36 +588,36 @@ JSON 文件不存在时视为空排行榜。JSON 格式错误、字段缺失或�
 4. `overtime.ogg`
 5. `round1.ogg`
 
-一首播放结束后立即播放队列中的下一首；播放完第 5 首（`round1.ogg`）后，回到第 1 首（`select_hero.ogg`）重新开始，持续循环，直到战斗结束或玩家返回主菜单。残局挑战模式不播放战斗音乐，也不播放主菜单音乐；该模式静音运行背景音乐（技能音效仍正常播放）。
+When one track finishes, the next track in the queue plays immediately; after the 5th track (`round1.ogg`) finishes, it returns to the 1st track (`select_hero.ogg`) and restarts, looping continuously until the battle ends or the player returns to the main menu. Endgame Challenge Mode does not play battle music and does not play main menu music; in this mode background music runs muted (ability sound effects still play normally).
 
-### 17.3 技能和效果音效
+### 17.3 Ability and Effect Sound Effects
 
-以下操作触发时，播放一次对应的音效文件：
+When the following actions trigger, the corresponding sound effect file is played once:
 
-| 来源 | 名称 | 音效文件 |
+| Source | Name | Sound effect file |
 |---|---|---|
-| 英雄技能 | 自毁程序 | `DVA_self_destruct.ogg` |
-| 英雄技能 | 改变数字 | `duplicate.ogg` |
-| 英雄技能 | 返回上一步 | `tracer.ogg` |
-| 敌方技能 | 裂地重拳 | `meteor_strike.ogg` |
-| 敌方技能 | 暗影吞噬 | `reaper.ogg` |
-| 敌方技能 | 系统骇入 | `EMP.ogg` |
-| 敌方技能 | 重力场 | `sigma.ogg` |
-| 敌方技能 | 笼中斗 | `SSVGG.ogg` |
-| 惊喜盒子 | Heroes Never Die | `mercy.ogg` |
-| 惊喜盒子 | 龙刃出鞘 | `dragon_blade.ogg` |
-| 惊喜盒子 | 灵狐为我引路 | `kitsune_rush.ogg` |
-| 惊喜盒子 | 重力场 | `sigma.ogg` |
-| 惊喜盒子 | 生化之球 | `moira.ogg` |
-| 惊喜盒子 | 笼中斗 | `SSVGG.ogg` |
+| Hero ability | Self-Destruct Program | `DVA_self_destruct.ogg` |
+| Hero ability | Change Number | `duplicate.ogg` |
+| Hero ability | Return to Previous Step | `tracer.ogg` |
+| Enemy ability | Ground-Splitting Punch | `meteor_strike.ogg` |
+| Enemy ability | Shadow Devour | `reaper.ogg` |
+| Enemy ability | System Hack | `EMP.ogg` |
+| Enemy ability | Gravity Field | `sigma.ogg` |
+| Enemy ability | Cage Match | `SSVGG.ogg` |
+| Surprise Box | Heroes Never Die | `mercy.ogg` |
+| Surprise Box | Dragon Blade Unsheathed | `dragon_blade.ogg` |
+| Surprise Box | Spirit Fox, Guide Me | `kitsune_rush.ogg` |
+| Surprise Box | Gravity Field | `sigma.ogg` |
+| Surprise Box | Biotic Orb | `moira.ogg` |
+| Surprise Box | Cage Match | `SSVGG.ogg` |
 
-音效播放规则：
+Sound effect playback rules:
 
-- 每次触发对应效果时播放一次音效，不循环。
-- 播放音效时，当前背景音乐（主菜单音乐或战斗音乐）继续同时播放。
-- 如果实现环境不支持音效和背景音乐同时播放，改为：暂停背景音乐，播放完整段音效后，从暂停处继续播放背景音乐。
-- 同一回合中多个效果先后触发时，音效按效果发生的顺序依次播放，不得互相截断。
+- Each time the corresponding effect triggers, the sound effect plays once, without looping.
+- While a sound effect plays, the current background music (main menu music or battle music) continues to play at the same time.
+- If the implementation environment does not support playing sound effects and background music simultaneously, instead: pause the background music, play the sound effect in full, then resume the background music from where it was paused.
+- When multiple effects trigger one after another in the same turn, the sound effects play in the order the effects occur and must not cut each other off.
 
-## 18 默认行为
+## 18 Default Behavior
 
-任何没有在本文档中定义的行为，都按以下默认规则处理：不改变游戏状态，显示清晰提示，并等待玩家重新输入。
+Any behavior not defined in this document is handled by the following default rule: do not change the game state, display a clear prompt, and wait for the player to input again.

@@ -1,122 +1,111 @@
-# Watchpoint Matrix 2048
+# 2048: Overwatch VS Talon
 
-守望矩阵 2048 是一个基于 Python + Tkinter 开发的 5×5 棋盘 2048 战斗游戏。游戏融合了经典 2048 玩法与战斗系统、英雄技能、答题机制、敌方技能、隐藏任务、惊喜盒子和残局挑战模式。
+2048: Overwatch VS Talon is a 5×5 board 2048 combat game built with Python + Tkinter. The game combines classic 2048 gameplay with a combat system, hero skills, a quiz mechanic, enemy skills, hidden quests, surprise boxes, and an endgame challenge mode.
 
-## 系统要求
+## System Requirements
 
-- **Python 3.8+**（需包含 Tkinter）
-- **pygame 2.0.0+**（用于音频播放）
+- **Python 3.8+** (Tkinter must be included)
+- **pygame 2.0.0+** (used for audio playback)
 
-### 安装依赖
+### Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-**注意**：Tkinter 通常随 Python 发行版自带。如果缺失：
-- **macOS**: 从 [python.org](https://www.python.org) 安装官方 Python
-- **Ubuntu/Debian**: `sudo apt-get install python3-tk`
-- **Fedora**: `sudo dnf install python3-tkinter`
+**Note**: Tkinter usually comes bundled with Python distributions. If it is missing:
+- **macOS**: Install the official Python from [python.org](https://www.python.org)
 
-## 运行游戏
+## Running the Game
 
-在项目目录下执行：
+Run the following in the project directory:
 
 ```bash
 python3 main.py
 ```
 
-或双击 `run_game.command`（macOS）
+## Game Features
 
-## 游戏特性
+### Core Gameplay
+- **5×5 board**: Number-merging mechanics based on 2048 rules
+- **Combat mode**: Fight the enemy by merging tiles to gain damage / healing / skill charges
+- **Endgame challenge mode**: Complete specific objectives on preset boards
 
-### 核心玩法
-- **5×5 棋盘**：基于 2048 规则的数字合并机制
-- **战斗模式**：对抗敌方，通过合并获得伤害/治疗/技能充能
-- **残局挑战模式**：在预设棋盘上完成特定目标
+### Combat System
+- **Merge rewards**: Merging different values triggers different effects
+  - Merge 4 → damage the enemy
+  - Merge 8 → heal yourself
+  - Merge 16 → increase max HP
+  - Merge 32/64/128+ → stronger effects
+- **Enemy skills** (triggered every 8 turns):
+  - Earth-Splitting Punch: shuffles the board
+  - Shadow Devour: deletes tiles
+  - System Hack: reverses the direction of your next move
+  - Gravity Field: reduces high-value tiles
+  - Cage Match: generates blocked cells
+- **Hidden quests**: Complete them to receive a surprise box reward
+- **Quiz revival**: When HP reaches zero or the board is stuck, answer 3 questions correctly to revive (once per game)
 
-### 战斗系统
-- **合并奖励**：不同数值的合并触发不同效果
-  - 合 4 → 伤害敌方
-  - 合 8 → 治疗自己
-  - 合 16 → 增加生命上限
-  - 合 32/64/128+ → 更强效果
-- **敌方技能**（每 8 回合触发）：
-  - 裂地重拳：打乱棋盘
-  - 暗影吞噬：删除方块
-  - 系统骇入：反转下次移动方向
-  - 重力场：降低大数值方块
-  - 笼中斗：生成阻挡格
-- **隐藏任务**：完成后获得惊喜盒子奖励
-- **答题救援**：生命归零或棋盘卡死时，答对 3 题可复活（每局限 1 次）
+### Hero Skills
+- **Self-Destruct Program**: Delete any tile
+- **Change Number**: Multiply a tile's value by 2 or divide it by 2
+- **Undo**: Revert the previous turn (limited to 3 times per game)
 
-### 英雄技能
-- **自毁程序**：删除任意方块
-- **改变数字**：将方块数值 ×2 或 ÷2
-- **返回上一步**：撤销上一回合（每局限 3 次）
+### Bug Quiz Mechanic
+- Each turn has a chance to trigger a programming question (the probability increases with turns, up to 30%)
+- Correct answer: normal merge + 5 consecutive correct answers award 1 skill charge
+- Wrong answer: tiles move but do not merge + 5 consecutive wrong answers deduct 20% of max HP
 
-### Bug 答题机制
-- 每回合有概率触发编程题（概率随回合递增至 30%）
-- 答对：正常合并 + 连续答对 5 题奖励 1 次技能充能
-- 答错：方块移动但不合并 + 连续答错 5 题扣除 20% 最大生命值
+### Audio System
+- **Main menu music**: 3 Overwatch theme songs play in random loop
+- **Battle music**: 5 tracks play in a fixed-order loop
+- **Sound effects**: Skills, enemy skills, and box effects all have corresponding voice lines
 
-### 音频系统
-- **主菜单音乐**：3 首守望先锋主题曲随机循环
-- **战斗音乐**：5 首音乐按固定顺序循环
-- **音效**：技能、敌方技能、盒子效果均有对应语音
+## Controls
 
-## 操作说明
+### Keyboard Controls
+- **W/A/S/D** or **Arrow keys**: Move tiles
+- **P**: Open the skill menu
+- **H**: Show the help panel
+- **L**: View the leaderboard
+- **Q**: Return to the main menu
 
-### 键盘控制
-- **W/A/S/D** 或 **方向键**：移动方块
-- **P**：打开技能菜单
-- **H**：显示帮助面板
-- **L**：查看排行榜
-- **Q**：返回主菜单
+### Mouse Controls
+- Click the on-screen arrow buttons to move tiles
+- Click the menu buttons to access skills / help / leaderboard
 
-### 鼠标控制
-- 点击屏幕上的箭头按钮移动方块
-- 点击菜单按钮访问技能/帮助/排行榜
-
-## 项目结构
+## Project Structure
 
 ```
 Final_Project/
-├── main.py                 # GUI 主程序和界面逻辑
-├── game_engine.py          # 游戏规则引擎（棋盘/战斗/技能/事件）
-├── music_ogg.py           # 音频管理器
-├── leaderboard.py         # 排行榜系统
+├── main.py                 # Main GUI program and interface logic
+├── game_engine.py          # Game rules engine (board / combat / skills / events)
+├── music_ogg.py           # Audio manager
+├── leaderboard.py         # Leaderboard system
 ├── data/
-│   ├── questions.json     # 题库（20 道编程题）
-│   └── leaderboard.json   # 排行榜记录
-├── music/                 # 音频资源（19 个 .ogg 文件）
+│   ├── questions.json     # Question bank (20 programming questions)
+│   └── leaderboard.json   # Leaderboard records
+├── music/                 # Audio assets (19 .ogg files)
 ├── fonts/
 │   └── Times New Roman.ttf
 ├── tests/
 │   └── test_game_engine.py
-├── GAME_RULES.md          # 完整游戏规则文档（实现依据）
-└── requirements.txt       # Python 依赖
+├── GAME_RULES.md          # Complete game rules document (implementation basis)
+└── requirements.txt       # Python dependencies
 ```
 
-## 开发和测试
 
-运行测试套件：
+## Rules Document
 
-```bash
-python3 -m unittest discover -s tests -v
-```
+For detailed game rules, values, mechanics, and implementation requirements, see [GAME_RULES.md](GAME_RULES.md). This document is the sole source of truth for the project and includes:
+- Complete game data and initial values
+- 2048 move/merge algorithm
+- Combat system value tables
+- Detailed rules for hero skills and enemy skills
+- Bug quiz mechanic
+- Music and sound effect mapping tables
+- Required test checklist
 
-## 规则文档
+## Acknowledgements
 
-详细的游戏规则、数值、机制和实现要求请参阅 [GAME_RULES.md](GAME_RULES.md)。该文档是项目的唯一规则依据，包含：
-- 完整的游戏数据和初始值
-- 2048 移动/合并算法
-- 战斗系统数值表
-- 英雄技能和敌方技能详细规则
-- Bug 答题机制
-- 音乐和音效映射表
-- 必须通过的测试清单
-
-## 致谢
-
-音频素材来自《守望先锋》（Overwatch），版权归暴雪娱乐所有。本项目仅供学习交流使用。
+Audio assets are from *Overwatch*, copyright Blizzard Entertainment. This project is for learning and educational exchange only.
