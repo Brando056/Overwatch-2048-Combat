@@ -9,15 +9,15 @@ try:
     import pygame
 
     _PYGAME_AVAILABLE = True
-except Exception:  # pragma: no cover - 环境缺少 pygame 时优雅降级。
+except Exception:  # pragma: no cover - degrade gracefully when pygame is missing.
     pygame = None  # type: ignore[assignment]
     _PYGAME_AVAILABLE = False
 
 
-# 主菜单循环播放的三首曲目，每次结束后重新随机选择一首。
+# Three tracks looped on the main menu; a new one is picked at random each time a track ends.
 MENU_TRACKS = ("Colosseo.ogg", "kiriko_origin.ogg", "midtown.ogg")
 
-# 战斗音乐固定顺序的循环队列。
+# Fixed-order looping queue for battle music.
 BATTLE_SEQUENCE = (
     "select_hero.ogg",
     "round1.ogg",
@@ -26,14 +26,14 @@ BATTLE_SEQUENCE = (
     "round1.ogg",
 )
 
-# 英雄技能触发时播放的音效文件。
+# Sound effect files played when a hero skill is triggered.
 SKILL_SFX = {
     "delete": "DVA_self_destruct.ogg",
     "change": "duplicate.ogg",
     "recall": "tracer.ogg",
 }
 
-# 敌方技能触发时播放的音效文件。
+# Sound effect files played when an enemy skill is triggered.
 ENEMY_SKILL_SFX = {
     "seismic_slam": "meteor_strike.ogg",
     "shadow_consume": "reaper.ogg",
@@ -42,7 +42,7 @@ ENEMY_SKILL_SFX = {
     "cage_fight": "SSVGG.ogg",
 }
 
-# 惊喜盒子效果触发时播放的音效文件。
+# Sound effect files played when a mystery box effect is triggered.
 MYSTERY_BOX_SFX = {
     "full_heal": "mercy.ogg",
     "dragon_blade": "dragon_blade.ogg",
@@ -54,7 +54,8 @@ MYSTERY_BOX_SFX = {
 
 MUSIC_DIR = Path(__file__).resolve().parent / "music"
 
-# 背景音乐起始播放位置（秒），按文件名配置；未配置的文件从头播放。
+# Start position (in seconds) for background music, configured per filename;
+# files not listed here play from the beginning.
 MUSIC_START_OFFSETS: dict[str, float] = {
     "select_hero.ogg": 5.5,
     "round1.ogg": 3,
@@ -62,8 +63,10 @@ MUSIC_START_OFFSETS: dict[str, float] = {
     "overtime.ogg": 2,
 }
 
-# 一次性音效起始播放位置（秒），按文件名配置；未配置的文件从头播放。
-# Sound 对象没有内置的起始秒数参数，需要在加载时手动裁剪音频数据。
+# Start position (in seconds) for one-shot sound effects, configured per filename;
+# files not listed here play from the beginning.
+# Sound objects have no built-in start-offset parameter, so the audio data
+# has to be trimmed manually when loading.
 SFX_START_OFFSETS: dict[str, float] = {
     "dragon_blade.ogg": 1.8,
     "duplicate.ogg": 2.9,
@@ -79,17 +82,17 @@ SFX_START_OFFSETS: dict[str, float] = {
     "tracer.ogg": 2,
 }
 
-# 默认音量，取值范围 0.0（静音）到 1.0（最大）；可通过 AudioManager 的
-# set_music_volume / set_sfx_volume 在运行时调整。
+# Default volume, ranging from 0.0 (muted) to 1.0 (maximum); can be adjusted at
+# runtime via AudioManager's set_music_volume / set_sfx_volume.
 DEFAULT_MUSIC_VOLUME = 1.0
 DEFAULT_SFX_VOLUME = 1.0
 
 
 class AudioManager:
-    """管理背景音乐循环队列和一次性技能/效果音效的播放。"""
+    """Manages the looping background music queue and one-shot skill/effect sound effects."""
 
     def __init__(self, music_dir: Path = MUSIC_DIR, rng: Optional[random.Random] = None) -> None:
-        # 初始化 pygame 混音器；缺少 pygame 或初始化失败时静默禁用音频。
+        # Initialize the pygame mixer; silently disable audio if pygame is missing or init fails.
         self.music_dir = music_dir
         self.rng = rng or random.Random()
         self.enabled = _PYGAME_AVAILABLE
@@ -107,15 +110,15 @@ class AudioManager:
 
     @property
     def mode(self) -> Optional[str]:
-        # 暴露当前背景音乐模式（"menu"、"battle" 或 None），便于界面避免重复触发。
+        # Expose the current background music mode ("menu", "battle" or None) so the UI can avoid re-triggering.
         return self._mode
 
     def _path(self, filename: str) -> Path:
-        # 拼接音频文件在 music 目录中的完整路径。
+        # Build the full path of an audio file in the music directory.
         return self.music_dir / filename
 
     def _get_sound(self, filename: str) -> Optional["pygame.mixer.Sound"]:
-        # 缓存已加载的音效，避免重复从磁盘读取。
+        # Cache loaded sound effects to avoid reading from disk repeatedly.
         if not self.enabled:
             return None
         if filename in self._sfx_cache:
@@ -133,7 +136,8 @@ class AudioManager:
 
     @staticmethod
     def _trim_sound(sound: "pygame.mixer.Sound", start_seconds: float) -> "pygame.mixer.Sound":
-        # Sound 对象没有内置的起始秒数参数，按字节裁剪原始采样数据实现跳过开头播放。
+        # Sound objects have no built-in start-offset parameter, so trim the raw sample data
+        # by bytes to skip the beginning of the sound.
         if start_seconds <= 0:
             return sound
         mixer_init = pygame.mixer.get_init()
@@ -149,33 +153,33 @@ class AudioManager:
         return pygame.mixer.Sound(buffer=raw[skip_bytes:])
 
     def play_sfx(self, filename: str, volume: Optional[float] = None) -> None:
-        # 播放一次音效；与当前背景音乐同时播放，不打断背景音乐。
-        # volume 为 None 时使用全局音效音量，否则覆盖为该音效单次使用的音量。
+        # Play a sound effect once; it plays alongside the current background music without interrupting it.
+        # If volume is None, the global SFX volume is used; otherwise it overrides the volume for this single play.
         sound = self._get_sound(filename)
         if sound is not None:
             sound.set_volume(self._sfx_volume if volume is None else max(0.0, min(1.0, volume)))
             sound.play()
 
     def play_skill_sfx(self, skill_id: str) -> None:
-        # 根据英雄技能标识播放对应音效。
+        # Play the sound effect matching a hero skill ID.
         filename = SKILL_SFX.get(skill_id)
         if filename:
             self.play_sfx(filename)
 
     def play_enemy_skill_sfx(self, skill_id: str) -> None:
-        # 根据敌方技能标识播放对应音效。
+        # Play the sound effect matching an enemy skill ID.
         filename = ENEMY_SKILL_SFX.get(skill_id)
         if filename:
             self.play_sfx(filename)
 
     def play_mystery_box_sfx(self, effect_id: str) -> None:
-        # 根据惊喜盒子效果标识播放对应音效。
+        # Play the sound effect matching a mystery box effect ID.
         filename = MYSTERY_BOX_SFX.get(effect_id)
         if filename:
             self.play_sfx(filename)
 
     def set_music_volume(self, volume: float) -> None:
-        # 设置背景音乐音量，取值范围会被限制在 0.0 到 1.0。
+        # Set the background music volume; the value is clamped to the range 0.0 to 1.0.
         self._music_volume = max(0.0, min(1.0, volume))
         if self.enabled:
             try:
@@ -184,12 +188,12 @@ class AudioManager:
                 pass
 
     def set_sfx_volume(self, volume: float) -> None:
-        # 设置后续播放的音效的默认音量；已缓存的音效在下次播放时生效。
+        # Set the default volume for sound effects played from now on; already-cached effects pick it up on their next play.
         self._sfx_volume = max(0.0, min(1.0, volume))
 
     def _play_music_file(self, filename: str) -> None:
-        # 加载并播放一首背景音乐曲目；失败时保持静音而不崩溃。
-        # 若 MUSIC_START_OFFSETS 中配置了该文件，则从指定秒数开始播放。
+        # Load and play one background music track; stay silent instead of crashing on failure.
+        # If the file is configured in MUSIC_START_OFFSETS, playback starts at the given second.
         if not self.enabled:
             return
         path = self._path(filename)
@@ -206,18 +210,18 @@ class AudioManager:
             pass
 
     def start_menu_music(self) -> None:
-        # 开始主菜单音乐循环：随机选择一首并进入循环模式。
+        # Start the main menu music loop: pick a random track and enter loop mode.
         self._mode = "menu"
         self._play_music_file(self.rng.choice(MENU_TRACKS))
 
     def start_battle_music(self) -> None:
-        # 开始战斗音乐固定顺序循环，从队列第一首开始。
+        # Start the fixed-order battle music loop, beginning with the first track in the queue.
         self._mode = "battle"
         self._battle_index = 0
         self._play_music_file(BATTLE_SEQUENCE[self._battle_index])
 
     def stop_music(self) -> None:
-        # 停止当前背景音乐并退出循环模式。
+        # Stop the current background music and leave loop mode.
         self._mode = None
         if self.enabled:
             try:
@@ -226,7 +230,7 @@ class AudioManager:
                 pass
 
     def poll(self) -> None:
-        # 由界面定时调用；当前曲目播放结束后推进到循环中的下一首。
+        # Called periodically by the UI; once the current track finishes, advance to the next one in the loop.
         if not self.enabled or self._mode is None:
             return
         try:

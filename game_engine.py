@@ -8,14 +8,14 @@ from pathlib import Path
 from typing import Any, Optional
 
 
-# 定义棋盘和游戏资源的基础限制。
+# Define the basic limits for the board and game resources.
 BOARD_SIZE = 5
 EMPTY = 0
 BLOCKED = -1
 MAX_SKILL_CHARGES = 5
 MAX_RECALL_USES = 3
 
-# 保存移动方向对应的行列变化量。
+# Row/column deltas for each movement direction.
 DIRECTIONS = {
     "up": (-1, 0),
     "down": (1, 0),
@@ -23,7 +23,7 @@ DIRECTIONS = {
     "right": (0, 1),
 }
 
-# 用于处理敌方技能造成的反向移动效果。
+# Used for the reversed-movement effect caused by an enemy skill.
 OPPOSITE_DIRECTION = {
     "up": "down",
     "down": "up",
@@ -31,7 +31,7 @@ OPPOSITE_DIRECTION = {
     "right": "left",
 }
 
-# 敌方可能使用的技能标识。
+# Identifiers of skills the enemy may use.
 ENEMY_SKILLS = (
     "seismic_slam",
     "shadow_consume",
@@ -40,7 +40,7 @@ ENEMY_SKILLS = (
     "cage_fight",
 )
 
-# 惊喜盒子可能触发的效果标识。
+# Identifiers of effects the mystery box may trigger.
 MYSTERY_BOX_EFFECTS = (
     "full_heal",
     "dragon_blade",
@@ -50,7 +50,7 @@ MYSTERY_BOX_EFFECTS = (
     "cage_fight",
 )
 
-# 战斗模式中可随机抽取的任务。
+# Missions that can be randomly drawn in battle mode.
 MISSIONS = (
     {
         "id": "T01",
@@ -69,7 +69,7 @@ MISSIONS = (
     },
 )
 
-# 挑战模式中可随机抽取的任务。
+# Missions that can be randomly drawn in challenge mode.
 CHALLENGE_MISSIONS = (
     {
         "id": "C01",
@@ -101,7 +101,7 @@ CHALLENGE_MISSIONS = (
 
 @dataclass
 class MovePreview:
-    """保存一次移动在真正结算前的预览结果。"""
+    """Holds the preview result of a move before it is actually resolved."""
 
     direction: str
     effective_direction: str
@@ -115,7 +115,7 @@ class MovePreview:
 
 @dataclass
 class TurnResult:
-    """保存一回合或一次技能操作完成后的结果。"""
+    """Holds the result after a turn or a skill action is completed."""
 
     success: bool
     message: str = ""
@@ -131,19 +131,19 @@ class TurnResult:
 
 
 class GameEngine:
-    """负责棋盘、战斗、任务和技能规则的核心引擎。"""
+    """Core engine responsible for the board, combat, missions, and skill rules."""
 
     def __init__(
         self,
         mode: str = "battle",
         rng: Optional[random.Random] = None,
     ) -> None:
-        # 注入随机数生成器，便于游戏运行和单元测试使用不同的随机状态。
+        # Inject the random number generator so gameplay and unit tests can use different random states.
         self.rng = rng or random.Random()
         self.reset(mode)
 
     def reset(self, mode: str) -> None:
-        # 根据模式重新建立完整的游戏状态。
+        # Rebuild the complete game state according to the mode.
         if mode not in {"battle", "challenge"}:
             raise ValueError("mode must be 'battle' or 'challenge'")
 
@@ -191,7 +191,7 @@ class GameEngine:
         self.snapshots: list[dict[str, Any]] = []
         self.pending_preview: Optional[MovePreview] = None
 
-        # 战斗模式从少量低数值方块开始，挑战模式使用预先生成的棋盘。
+        # Battle mode starts with a few low-value tiles; challenge mode uses a pre-generated board.
         if mode == "battle":
             self._place_random_tiles(3, {2: 0.90, 4: 0.10})
         else:
@@ -200,21 +200,21 @@ class GameEngine:
 
     @property
     def is_battle(self) -> bool:
-        # 提供比直接比较模式字符串更清晰的判断方式。
+        # Clearer than comparing the mode string directly.
         return self.mode == "battle"
 
     @property
     def is_challenge(self) -> bool:
-        # 提供挑战模式的便捷判断属性。
+        # Convenience property for checking challenge mode.
         return self.mode == "challenge"
 
     @property
     def turns_until_enemy_skill(self) -> int:
-        # 距离下一次敌方技能触发还剩多少回合（技能固定每 8 回合触发一次）。
+        # Number of turns left until the next enemy skill triggers (skills trigger every 8 turns).
         return 8 - (self.turn % 8)
 
     def _create_challenge_board(self) -> None:
-        # 尝试生成一个既有空位又至少存在一步有效移动的挑战棋盘。
+        # Try to generate a challenge board that has empty cells and at least one valid move.
         probabilities = {2: 0.45, 4: 0.30, 8: 0.15, 16: 0.07, 32: 0.03}
         for _ in range(100):
             self.board = [[EMPTY for _ in range(BOARD_SIZE)] for _ in range(BOARD_SIZE)]
@@ -231,7 +231,7 @@ class GameEngine:
         ]
 
     def _place_random_tiles(self, count: int, probabilities: dict[int, float]) -> None:
-        # 在随机空位中放置指定数量的新方块。
+        # Place the given number of new tiles in random empty cells.
         for _ in range(count):
             cells = self.empty_cells()
             if not cells:
@@ -240,7 +240,7 @@ class GameEngine:
             self.board[row][column] = self._weighted_choice(probabilities)
 
     def _weighted_choice(self, probabilities: dict[int, float]) -> int:
-        # 按传入概率表选择一个新方块数值。
+        # Pick a new tile value according to the given probability table.
         threshold = self.rng.random()
         cumulative = 0.0
         for value, probability in probabilities.items():
@@ -250,7 +250,7 @@ class GameEngine:
         return next(reversed(probabilities))
 
     def empty_cells(self) -> list[tuple[int, int]]:
-        # 返回可以放置方块的空位，惊喜盒子所在位置不能重复放置。
+        # Return cells where a tile can be placed; the mystery box cell cannot be reused.
         return [
             (row, column)
             for row in range(BOARD_SIZE)
@@ -260,7 +260,7 @@ class GameEngine:
         ]
 
     def tile_cells(self) -> list[tuple[int, int]]:
-        # 返回当前所有数字方块的位置。
+        # Return the positions of all numbered tiles.
         return [
             (row, column)
             for row in range(BOARD_SIZE)
@@ -269,17 +269,17 @@ class GameEngine:
         ]
 
     def tile_values(self) -> list[int]:
-        # 返回当前所有数字方块的数值，用于统计和任务判断。
+        # Return the values of all numbered tiles, used for statistics and mission checks.
         return [self.board[row][column] for row, column in self.tile_cells()]
 
     def current_bug_probability(self) -> float:
-        # 战斗模式中的错误概率会随回合数增加，但有最高上限。
+        # In battle mode the bug probability grows with the turn count, up to a maximum.
         if not self.is_battle:
             return 0.0
         return min(0.05 + ((self.turn + 1) // 10) * 0.05, 0.30)
 
     def tile_probabilities(self, next_turn: Optional[int] = None) -> dict[int, float]:
-        # 根据下一回合的阶段调整新生成方块的数值分布。
+        # Adjust the value distribution of newly spawned tiles based on the stage of the next turn.
         turn = self.turn + 1 if next_turn is None else next_turn
         if turn >= 40:
             return {2: 0.75, 4: 0.15, 8: 0.07, 16: 0.03}
@@ -288,23 +288,23 @@ class GameEngine:
         return {2: 0.90, 4: 0.10}
 
     def _update_highest_tile(self) -> None:
-        # 更新当前棋盘上的最高方块数值。
+        # Update the highest tile value currently on the board.
         self.highest_tile = max(self.tile_values() or [0])
 
     def parse_coordinate(self, text: str) -> Optional[tuple[int, int]]:
-        # 将类似 A1 的用户坐标转换为从零开始的行列坐标。
+        # Convert a user coordinate such as A1 into zero-based (row, column) coordinates.
         cleaned = text.strip().upper()
         if len(cleaned) != 2 or cleaned[0] not in "ABCDE" or cleaned[1] not in "12345":
             return None
         return int(cleaned[1]) - 1, ord(cleaned[0]) - ord("A")
 
     def coordinate_label(self, coordinate: tuple[int, int]) -> str:
-        # 将内部行列坐标转换回界面显示的字母数字坐标。
+        # Convert internal (row, column) coordinates back to the letter-number label shown in the UI.
         row, column = coordinate
         return f"{chr(ord('A') + column)}{row + 1}"
 
     def _line_positions(self, direction: str, line_index: int) -> list[tuple[int, int]]:
-        # 按移动方向生成一行或一列的处理顺序。
+        # Generate the processing order of a row or column for the given movement direction.
         if direction in {"left", "right"}:
             positions = [(line_index, column) for column in range(BOARD_SIZE)]
         else:
@@ -318,7 +318,7 @@ class GameEngine:
         values: list[int],
         allow_merge: bool,
     ) -> tuple[list[int], list[int]]:
-        # 先压缩空位，再按 2048 规则合并相邻且相等的方块。
+        # First compact out the empty cells, then merge adjacent equal tiles using 2048 rules.
         compact = [value for value in values if value > EMPTY]
         result: list[int] = []
         merges: list[int] = []
@@ -340,7 +340,7 @@ class GameEngine:
         direction: str,
         allow_merge: bool,
     ) -> tuple[list[list[int]], list[int]]:
-        # 在不直接修改真实棋盘的情况下，计算一次移动后的结果。
+        # Compute the result of a move without modifying the real board.
         result = copy.deepcopy(self.board)
         all_merges: list[int] = []
 
@@ -349,7 +349,7 @@ class GameEngine:
             segment: list[tuple[int, int]] = []
 
             def flush_segment() -> None:
-                # 将连续的可移动区域压缩并写回模拟棋盘。
+                # Compact a contiguous movable region and write it back to the simulated board.
                 nonlocal segment
                 if not segment:
                     return
@@ -376,11 +376,11 @@ class GameEngine:
         left: list[list[int]],
         right: list[list[int]],
     ) -> bool:
-        # 通过比较二维列表判断移动是否真正改变了棋盘。
+        # Compare the 2D lists to determine whether a move actually changed the board.
         return left != right
 
     def has_valid_move(self) -> bool:
-        # 有空位，或至少有一个方向可以移动/合并时，游戏仍可继续。
+        # The game can continue if there is an empty cell or at least one direction can move/merge.
         if self.empty_cells():
             return True
         for direction in DIRECTIONS:
@@ -390,7 +390,7 @@ class GameEngine:
         return False
 
     def start_move(self, direction: str) -> Optional[MovePreview]:
-        # 创建移动预览，并暂存移动前状态，供错误题目和回溯技能使用。
+        # Create a move preview and stash the pre-move state for bug questions and the recall skill.
         if self.game_over or self.pending_rescue_type:
             return None
         direction = direction.strip().lower()
@@ -430,7 +430,7 @@ class GameEngine:
         preview: MovePreview,
         bug_correct: bool = True,
     ) -> TurnResult:
-        # 根据答题结果结算移动、合并、惊喜盒子、敌方事件和游戏结束条件。
+        # Resolve the move, merges, mystery box, enemy events, and game-over conditions based on the quiz result.
         if self.pending_preview is not preview:
             return TurnResult(False, "This move is no longer available.")
 
@@ -516,7 +516,7 @@ class GameEngine:
         )
 
     def _snapshot(self) -> dict[str, Any]:
-        # 保存所有会影响后续规则的状态，确保 Recall 可以完整恢复。
+        # Save all state that affects later rules so Recall can restore it completely.
         return {
             "board": copy.deepcopy(self.board),
             "blocked_until": copy.deepcopy(self.blocked_until),
@@ -545,7 +545,7 @@ class GameEngine:
         }
 
     def _restore_snapshot(self, snapshot: dict[str, Any]) -> None:
-        # 从快照恢复棋盘、战斗数据、任务数据和随机数状态。
+        # Restore the board, combat data, mission data, and random number state from a snapshot.
         self.board = copy.deepcopy(snapshot["board"])
         self.blocked_until = copy.deepcopy(snapshot["blocked_until"])
         self.mystery_box = snapshot["mystery_box"]
@@ -572,7 +572,7 @@ class GameEngine:
         self.rng.setstate(snapshot["rng_state"])
 
     def _apply_merges(self, merges: list[int]) -> None:
-        # 统计合并次数，并在达到阈值时发放对应奖励。
+        # Count merges and grant the corresponding rewards when thresholds are reached.
         self.total_merges += len(merges)
         for merged_value in merges:
             counter_key = merged_value if merged_value in self.merge_counts else 128
@@ -587,7 +587,7 @@ class GameEngine:
 
     @staticmethod
     def _merge_reward(merged_value: int) -> tuple[int, str]:
-        # 将合并后的数值映射到奖励触发次数和奖励类型。
+        # Map a merged value to the number of merges needed and the reward type.
         if merged_value == 4:
             return 2, "damage_10"
         if merged_value == 8:
@@ -601,7 +601,7 @@ class GameEngine:
         return 3, "damage_value"
 
     def _apply_reward(self, reward: str, merged_value: int) -> None:
-        # 执行由合并奖励产生的治疗、伤害、生命上限或技能充能。
+        # Apply the healing, damage, max HP, or skill charge produced by a merge reward.
         if reward == "damage_10":
             self._damage_enemy(10)
         elif reward == "heal_10":
@@ -618,27 +618,27 @@ class GameEngine:
             self._damage_enemy(merged_value)
 
     def _damage_enemy(self, amount: int) -> None:
-        # 扣除敌方生命值，并确保生命值不会低于零。
+        # Reduce the enemy's HP, ensuring it never drops below zero.
         if self.enemy_hp is not None:
             self.enemy_hp = max(0, self.enemy_hp - amount)
 
     def _heal_player(self, amount: int) -> None:
-        # 恢复玩家生命值，但不超过当前生命上限。
+        # Restore the player's HP without exceeding the current max HP.
         if self.player_hp is not None and self.player_max_hp is not None:
             self.player_hp = min(self.player_max_hp, self.player_hp + amount)
 
     def _damage_player(self, amount: int) -> None:
-        # 扣除玩家生命值，并确保生命值不会低于零。
+        # Reduce the player's HP, ensuring it never drops below zero.
         if self.player_hp is not None:
             self.player_hp = max(0, self.player_hp - amount)
 
     def _apply_wrong_streak_penalty(self) -> None:
-        # 连续答错 5 道 Bug 题时，扣除当前最大生命值 20%（向下取整）。
+        # After 5 wrong bug answers in a row, deduct 20% of current max HP (rounded down).
         if self.player_max_hp is not None:
             self._damage_player(int(self.player_max_hp * 0.2))
 
     def _spawn_tile(self) -> None:
-        # 在移动后随机空位生成一个新方块。
+        # Spawn a new tile in a random empty cell after a move.
         cells = self.empty_cells()
         if not cells:
             return
@@ -646,7 +646,7 @@ class GameEngine:
         self.board[row][column] = self._weighted_choice(self.tile_probabilities())
 
     def _update_mission(self) -> None:
-        # 检查战斗模式任务是否已经达成。
+        # Check whether the battle mode mission has been completed.
         if not self.is_battle or self.mission is None or self.mission_complete:
             return
 
@@ -662,7 +662,7 @@ class GameEngine:
             self.mission_complete = True
 
     def _update_challenge_mission(self) -> None:
-        # 检查挑战模式目标是否已经达成。
+        # Check whether the challenge mode objective has been completed.
         if not self.is_challenge or self.challenge_mission is None or self.mission_complete:
             return
 
@@ -682,7 +682,7 @@ class GameEngine:
             self.mission_complete = True
 
     def _spawn_mystery_box(self) -> None:
-        # 战斗任务完成后，在棋盘空位生成一次惊喜盒子。
+        # After a battle mission is completed, spawn a mystery box once in an empty cell.
         if (
             not self.is_battle
             or not self.mission_complete
@@ -696,7 +696,7 @@ class GameEngine:
             self.mystery_box = self.rng.choice(cells)
 
     def activate_mystery_box(self) -> Optional[str]:
-        # 触发惊喜盒子并执行随机效果。
+        # Trigger the mystery box and apply a random effect.
         if self.mystery_box is None:
             return None
 
@@ -727,7 +727,7 @@ class GameEngine:
         return effect
 
     def _mystery_box_will_be_hit(self, direction: str) -> bool:
-        # 判断本次移动是否会让数字方块经过惊喜盒子所在位置。
+        # Determine whether this move will cause a numbered tile to pass through the mystery box's position.
         if self.mystery_box is None:
             return False
 
@@ -737,7 +737,7 @@ class GameEngine:
             segment: list[tuple[int, int]] = []
 
             def segment_hits_target() -> bool:
-                # 目标位置后方存在数字方块时，目标会在本次移动中被触发。
+                # If a numbered tile lies behind the target position, the target is triggered by this move.
                 if target not in segment:
                     return False
                 target_index = segment.index(target)
@@ -759,7 +759,7 @@ class GameEngine:
         return False
 
     def _apply_enemy_events(self) -> Optional[str]:
-        # 处理定期敌方技能以及战斗模式中的普通攻击。
+        # Handle the periodic enemy skill and the regular attack in battle mode.
         enemy_skill = None
         if self.turn % 8 == 0:
             enemy_skill = self._use_enemy_skill()
@@ -768,7 +768,7 @@ class GameEngine:
         return enemy_skill
 
     def _use_enemy_skill(self) -> Optional[str]:
-        # 随机选择一个与上次不同的敌方技能并立即执行。
+        # Randomly pick an enemy skill different from the last one and execute it immediately.
         candidates = [skill for skill in ENEMY_SKILLS if skill != self.last_enemy_skill]
         skill = self.rng.choice(candidates or list(ENEMY_SKILLS))
         self.last_enemy_skill = skill
@@ -799,7 +799,7 @@ class GameEngine:
         return skill
 
     def _remove_expired_blocks(self) -> None:
-        # 清除已经达到持续时间的阻挡格。
+        # Clear blocked cells whose duration has run out.
         expired = [
             position
             for position, expiry in self.blocked_until.items()
@@ -820,7 +820,7 @@ class GameEngine:
         mystery_effect: Optional[str],
         wrong_streak_penalty: bool = False,
     ) -> str:
-        # 将本回合发生的主要事件整理为界面状态栏文本。
+        # Assemble the main events of this turn into the UI status bar text.
         parts = [f"Turn {self.turn} completed."]
         if merges:
             parts.append(f"Merged {', '.join(str(value) for value in merges)}.")
@@ -839,7 +839,7 @@ class GameEngine:
         return " ".join(parts)
 
     def _request_rescue(self, rescue_type: str) -> TurnResult:
-        # 在玩家死亡或棋盘无路可走时进入一次救援答题流程。
+        # Enter the one-time rescue quiz flow when the player dies or the board has no moves left.
         if self.rescue_used:
             return self._finish("loss", "Rescue has already been used.")
         self.pending_rescue_type = rescue_type
@@ -847,7 +847,7 @@ class GameEngine:
         return TurnResult(True, self.status_message, rescue_type=rescue_type)
 
     def resolve_rescue(self, success: bool) -> TurnResult:
-        # 根据救援答题结果恢复生命值或清理棋盘方块。
+        # Restore HP or clear board tiles depending on the rescue quiz result.
         if not self.pending_rescue_type:
             return TurnResult(False, "No rescue is pending.")
         rescue_type = self.pending_rescue_type
@@ -875,7 +875,7 @@ class GameEngine:
         coordinate: Optional[tuple[int, int]] = None,
         increase: Optional[bool] = None,
     ) -> TurnResult:
-        # 校验并执行玩家技能，每回合最多使用一次技能。
+        # Validate and execute a player skill; at most one skill can be used per turn.
         if self.game_over or self.pending_rescue_type:
             return TurnResult(False, "Skills are unavailable right now.")
         if self.skill_used_this_turn:
@@ -917,7 +917,7 @@ class GameEngine:
         return TurnResult(True, self.status_message)
 
     def _invalid_coordinate(self, coordinate: tuple[int, int]) -> bool:
-        # 判断坐标是否在棋盘内且对应一个数字方块。
+        # Check whether the coordinate is within the board and refers to a numbered tile.
         row, column = coordinate
         return not (
             0 <= row < BOARD_SIZE
@@ -932,7 +932,7 @@ class GameEngine:
         enemy_skill: Optional[str] = None,
         mystery_effect: Optional[str] = None,
     ) -> TurnResult:
-        # 设置游戏结束状态，并返回最终结果。
+        # Set the game-over state and return the final result.
         self.game_over = True
         self.game_result = result
         self.status_message = message
@@ -947,17 +947,17 @@ class GameEngine:
 
 
 class QuestionManager:
-    """负责读取题库、抽取题目和检查答案。"""
+    """Responsible for loading the question bank, drawing questions, and checking answers."""
 
     def __init__(self, path: Path, rng: Optional[random.Random] = None) -> None:
-        # 保存题库路径和随机数生成器，并在初始化时读取题目。
+        # Store the question bank path and random number generator, and load the questions on initialization.
         self.path = path
         self.rng = rng or random.Random()
         self.questions = self._load_questions()
         self.used_ids: set[str] = set()
 
     def _load_questions(self) -> list[dict[str, Any]]:
-        # 读取 JSON 题库，并验证其基本结构。
+        # Read the JSON question bank and validate its basic structure.
         with self.path.open("r", encoding="utf-8") as file:
             questions = json.load(file)
         if not isinstance(questions, list) or not questions:
@@ -968,7 +968,7 @@ class QuestionManager:
         return questions
 
     def next_question(self) -> dict[str, Any]:
-        # 优先抽取尚未使用的题目，全部使用后再开始新一轮。
+        # Prefer questions that haven't been used yet; start a new round once all have been used.
         available = [item for item in self.questions if item["id"] not in self.used_ids]
         if not available:
             self.used_ids.clear()
@@ -979,7 +979,7 @@ class QuestionManager:
 
     @staticmethod
     def check_answer(question: dict[str, Any], answer: str) -> bool:
-        # 选择题忽略大小写，文本题同时忽略大小写和首尾空格。
+        # Choice questions ignore case; text questions ignore case and leading/trailing whitespace.
         submitted = answer.strip()
         expected = str(question.get("answer", "")).strip()
         if question.get("type") == "choice":

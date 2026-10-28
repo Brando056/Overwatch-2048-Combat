@@ -7,15 +7,15 @@ from typing import Any
 
 
 class Leaderboard:
-    """负责读取、验证和保存排行榜数据。"""
+    """Responsible for reading, validating, and saving leaderboard data."""
 
     def __init__(self, path: Path) -> None:
-        # 保存排行榜文件位置，并确保其父目录存在。
+        # Store the leaderboard file location and make sure its parent directory exists.
         self.path = path
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
     def load(self) -> list[dict[str, Any]]:
-        # 读取排行榜；文件不存在或内容损坏时返回空列表。
+        # Read the leaderboard; return an empty list if the file is missing or corrupted.
         if not self.path.exists():
             return []
         try:
@@ -35,7 +35,7 @@ class Leaderboard:
         turns: int,
         result: str = "win",
     ) -> bool:
-        # 验证记录后，仅将胜利记录加入排行榜并保留前五名。
+        # After validating the record, add only winning records to the leaderboard and keep the top five.
         cleaned_name = name.strip()
         if not 1 <= len(cleaned_name) <= 20:
             return False
@@ -60,7 +60,7 @@ class Leaderboard:
         return self._save(records)
 
     def _save(self, records: list[dict[str, Any]]) -> bool:
-        # 将排序后的记录写回 JSON 文件。
+        # Write the sorted records back to the JSON file.
         try:
             with self.path.open("w", encoding="utf-8") as file:
                 json.dump(records, file, indent=2)
@@ -70,7 +70,7 @@ class Leaderboard:
 
     @staticmethod
     def _valid_record(record: Any) -> bool:
-        # 检查单条排行榜记录是否包含正确的数据类型和字段。
+        # Check whether a single leaderboard record has the correct data types and fields.
         if not isinstance(record, dict):
             return False
         required = {"name", "mode", "difficulty", "score", "turns", "result", "date"}
